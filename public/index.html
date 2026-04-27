@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>WeChatSim v5.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#ededed;--white:#fff;--green:#07c160;--green2:#95ec69;
+  --text:#000;--text2:#666;--text3:#999;--border:#e5e5e5;
+  --chat-bg:#ededed;--header:#ededed;--tab-bg:#f7f7f7;
+  --bubble-self:#95ec69;--bubble-other:#fff;
+  --red:#fa5151;--orange:#ff8800;--blue:#576b95;
+  --card-bg:#fff;--input-bg:#f5f5f5;
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:15px;color:var(--text);background:#000;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{max-width:430px;margin:0 auto;height:100%;position:relative;overflow:hidden;background:var(--bg)}
+.page{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;z-index:1}
+.page.hide{display:none}
+
+/* Status Bar */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 16px;font-size:12px;background:var(--header);color:var(--text);height:28px;flex-shrink:0}
+.status-bar .left{font-weight:600}
+.status-bar .right{display:flex;gap:4px;align-items:center}
+.status-bar .ai-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+
+/* Navbar */
+.navbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--header);border-bottom:1px solid var(--border);height:48px;flex-shrink:0}
+.navbar .title{font-size:17px;font-weight:600;flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navbar .back,.navbar .action{width:60px;display:flex;align-items:center;cursor:pointer;font-size:14px;color:var(--text)}
+.navbar .back{justify-content:flex-start}
+.navbar .action{justify-content:flex-end;gap:8px}
+.navbar .action span{font-size:20px}
+
+/* TabBar */
+.tabbar{display:flex;border-top:1px solid var(--border);background:var(--tab-bg);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;padding:6px 0;cursor:pointer;position:relative}
+.tabbar .tab .icon{font-size:22px}
+.tabbar .tab .label{font-size:10px;color:var(--text3);margin-top:2px}
+.tabbar .tab.active .label{color:var(--green)}
+.tabbar .tab .badge{position:absolute;top:2px;right:50%;margin-right:-18px;background:var(--red);color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* Content */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.content::-webkit-scrollbar{display:none}
+
+/* Search */
+.search-bar{padding:8px 12px;background:var(--header)}
+.search-bar input{width:100%;padding:8px 12px;border:none;border-radius:6px;background:var(--input-bg);font-size:14px;outline:none}
+
+/* List Items */
+.list-item{display:flex;align-items:center;padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border);cursor:pointer}
+.list-item:active{background:#f0f0f0}
+.list-item .avatar{width:44px;height:44px;border-radius:6px;margin-right:12px;flex-shrink:0;object-fit:cover;background:#ddd}
+.list-item .info{flex:1;min-width:0}
+.list-item .info .name{font-size:16px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item .info .msg{font-size:13px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.list-item .meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;margin-left:8px}
+.list-item .meta .time{font-size:11px;color:var(--text3)}
+.list-item .arrow{color:var(--text3);margin-left:8px}
+
+/* Section */
+.section{margin-top:10px}
+.section-title{padding:8px 16px;font-size:13px;color:var(--text3)}
+.section-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--white);border-bottom:1px solid var(--border);cursor:pointer}
+.section-item:active{background:#f0f0f0}
+.section-item .left{display:flex;align-items:center;gap:10px;font-size:15px}
+.section-item .right{color:var(--text3);display:flex;align-items:center;gap:6px;font-size:14px}
+
+/* Chat */
+.chat-area{flex:1;overflow-y:auto;padding:10px 12px;-webkit-overflow-scrolling:touch}
+.chat-area::-webkit-scrollbar{display:none}
+.msg-row{display:flex;margin-bottom:10px;align-items:flex-start}
+.msg-row.self{flex-direction:row-reverse}
+.msg-row .m-avatar{width:38px;height:38px;border-radius:6px;flex-shrink:0;cursor:pointer;object-fit:cover}
+.msg-row .m-bubble{max-width:65%;margin:0 10px;position:relative}
+.msg-row .m-bubble .bubble{padding:10px 14px;border-radius:8px;font-size:15px;line-height:1.5;word-break:break-word;position:relative}
+.msg-row:not(.self) .m-bubble .bubble{background:var(--bubble-other);color:var(--text)}
+.msg-row.self .m-bubble .bubble{background:var(--bubble-self);color:var(--text)}
+.msg-row .m-bubble .sender{font-size:12px;color:var(--text3);margin-bottom:3px}
+.msg-time{text-align:center;color:var(--text3);font-size:12px;margin:8px 0}
+.msg-system{text-align:center;color:var(--text3);font-size:12px;margin:6px 16px;background:rgba(0,0,0,.05);border-radius:4px;padding:4px 8px}
+
+/* Chat Input */
+.chat-input-bar{display:flex;align-items:flex-end;padding:8px 10px;background:var(--header);border-top:1px solid var(--border);flex-shrink:0;gap:6px}
+.chat-input-bar textarea{flex:1;border:none;border-radius:6px;padding:8px 10px;font-size:15px;background:var(--white);resize:none;outline:none;max-height:100px;min-height:36px;line-height:1.4}
+.chat-input-bar .btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;flex-shrink:0;border-radius:6px}
+.chat-input-bar .send-btn{background:var(--green);color:#fff;font-size:14px;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600}
+
+/* Chat extras panel */
+.chat-extras{display:none;background:var(--header);border-top:1px solid var(--border);padding:16px;flex-shrink:0}
+.chat-extras.show{display:block}
+.chat-extras .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.chat-extras .grid .item{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.chat-extras .grid .item .icon{width:50px;height:50px;background:var(--white);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.chat-extras .grid .item .label{font-size:11px;color:var(--text2)}
+
+/* Quick buttons */
+.quick-btns{display:flex;gap:4px;padding:4px 8px;background:var(--header);flex-shrink:0;overflow-x:auto}
+.quick-btns::-webkit-scrollbar{display:none}
+.quick-btns .qb{font-size:11px;padding:4px 8px;border-radius:12px;background:var(--green);color:#fff;cursor:pointer;white-space:nowrap;border:none}
+.quick-btns .qb:active{opacity:.7}
+
+/* Sticker panel */
+.sticker-panel{display:none;background:var(--header);border-top:1px solid var(--border);padding:8px;max-height:200px;overflow-y:auto;flex-shrink:0}
+.sticker-panel.show{display:block}
+.sticker-panel .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sticker-panel .grid img{width:100%;aspect-ratio:1;object-fit:contain;cursor:pointer;border-radius:6px;background:var(--input-bg)}
+
+/* Multi-select bar */
+.select-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--header);border-top:1px solid var(--border);flex-shrink:0}
+.select-bar .btn{padding:6px 16px;border-radius:6px;border:none;cursor:pointer;font-size:14px}
+.msg-row .m-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);margin:8px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.msg-row .m-check.checked{background:var(--green);border-color:var(--green);color:#fff}
+
+/* Red Packet */
+.rp-bubble{background:#fa9d3b!important;color:#fff!important;border-radius:10px!important;padding:12px!important;min-width:200px;cursor:pointer}
+.rp-bubble .rp-title{font-size:15px;margin-bottom:4px}
+.rp-bubble .rp-label{font-size:11px;border-top:1px solid rgba(255,255,255,.3);padding-top:6px;margin-top:8px}
+.rp-bubble.opened{opacity:.7}
+
+/* Gift */
+.gift-bubble{background:linear-gradient(135deg,#ff6b6b,#ee5a24)!important;color:#fff!important;border-radius:10px!important;padding:12px!important;min-width:180px}
+
+/* Image in chat */
+.img-bubble{padding:0!important;background:transparent!important;overflow:hidden;border-radius:8px!important}
+.img-bubble img{max-width:200px;max-height:200px;display:block;border-radius:8px;cursor:pointer}
+
+/* Video in chat */
+.vid-bubble{position:relative;cursor:pointer;padding:0!important;background:#000!important;border-radius:8px!important;overflow:hidden}
+.vid-bubble .play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:36px;color:#fff;text-shadow:0 0 10px rgba(0,0,0,.5)}
+
+/* Location */
+.loc-bubble{background:var(--white)!important;border-radius:10px!important;padding:10px!important;min-width:180px}
+.loc-bubble .loc-icon{font-size:24px}
+
+/* Narrator (offline) */
+.narrator-row{margin:10px 16px;padding:12px 16px;background:rgba(255,255,255,.9);border-radius:8px;font-size:14px;line-height:1.8;color:#333;border-left:3px solid var(--green);font-style:italic}
+
+/* Moments */
+.moment-header{height:280px;position:relative;background:linear-gradient(135deg,#667eea,#764ba2);overflow:hidden}
+.moment-header .cover{width:100%;height:100%;object-fit:cover}
+.moment-header .user-info{position:absolute;bottom:16px;right:16px;display:flex;align-items:center;gap:10px}
+.moment-header .user-info .name{color:#fff;font-size:17px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.moment-header .user-info img{width:60px;height:60px;border-radius:8px;border:2px solid #fff}
+
+.moment-card{padding:12px 16px;background:var(--white);border-bottom:8px solid var(--bg)}
+.moment-card .mc-header{display:flex;gap:10px;margin-bottom:8px}
+.moment-card .mc-header img{width:42px;height:42px;border-radius:6px;cursor:pointer}
+.moment-card .mc-header .mc-name{font-size:15px;color:var(--blue);font-weight:600;cursor:pointer}
+.moment-card .mc-body{margin-left:52px}
+.moment-card .mc-text{font-size:15px;line-height:1.6;margin-bottom:8px;word-break:break-word}
+.moment-card .mc-images{display:grid;gap:4px;margin-bottom:8px}
+.moment-card .mc-images.c1{grid-template-columns:1fr;max-width:240px}
+.moment-card .mc-images.c2{grid-template-columns:1fr 1fr;max-width:320px}
+.moment-card .mc-images.c3,.moment-card .mc-images.c4,.moment-card .mc-images.c5,.moment-card .mc-images.c6,.moment-card .mc-images.c7,.moment-card .mc-images.c8,.moment-card .mc-images.c9{grid-template-columns:repeat(3,1fr);max-width:320px}
+.moment-card .mc-images img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;cursor:pointer}
+.moment-card .mc-footer{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.moment-card .mc-footer .mc-time{font-size:12px;color:var(--text3)}
+.moment-card .mc-footer .mc-action{font-size:20px;cursor:pointer;background:var(--input-bg);padding:2px 10px;border-radius:4px}
+.moment-card .mc-likes{background:var(--input-bg);padding:6px 10px;border-radius:4px;margin-top:6px;font-size:13px;color:var(--blue)}
+.moment-card .mc-comments{background:var(--input-bg);padding:6px 10px;border-radius:0 0 4px 4px;font-size:13px}
+.moment-card .mc-comments .cmt{margin-bottom:4px;line-height:1.5}
+.moment-card .mc-comments .cmt .cmt-name{color:var(--blue);font-weight:500;cursor:pointer}
+.moment-card .mc-loc{font-size:12px;color:var(--blue);margin-bottom:4px}
+
+/* Compose */
+.compose-area textarea{width:100%;min-height:120px;border:none;padding:16px;font-size:16px;outline:none;resize:none;background:var(--white)}
+.compose-imgs{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px;background:var(--white)}
+.compose-imgs .img-item{width:80px;height:80px;border-radius:6px;overflow:hidden;position:relative}
+.compose-imgs .img-item img{width:100%;height:100%;object-fit:cover}
+.compose-imgs .add-img{width:80px;height:80px;border:2px dashed var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text3);cursor:pointer}
+
+/* Profile */
+.profile-card{background:var(--white);padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.profile-card img{width:80px;height:80px;border-radius:12px}
+.profile-card .name{font-size:20px;font-weight:600}
+.profile-card .sig{font-size:13px;color:var(--text3);text-align:center;max-width:80%}
+.profile-card .persona{font-size:12px;color:var(--text2);text-align:left;width:100%;padding:10px;background:var(--input-bg);border-radius:6px;max-height:100px;overflow-y:auto;margin-top:4px}
+
+/* Buttons */
+.btn-primary{width:100%;padding:12px;border:none;border-radius:8px;background:var(--green);color:#fff;font-size:16px;cursor:pointer;font-weight:600}
+.btn-primary:active{opacity:.8}
+.btn-danger{width:100%;padding:12px;border:none;border-radius:8px;background:var(--red);color:#fff;font-size:16px;cursor:pointer}
+.btn-outline{padding:8px 20px;border:1px solid var(--green);color:var(--green);background:transparent;border-radius:6px;cursor:pointer;font-size:14px}
+
+/* Form */
+.form-group{padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border)}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:15px;outline:none;background:var(--white);font-family:inherit}
+.form-group textarea{min-height:80px;resize:vertical}
+
+/* Wallet */
+.wallet-card{margin:20px 16px;padding:30px;background:linear-gradient(135deg,var(--green),#059142);border-radius:16px;color:#fff;text-align:center}
+.wallet-card .label{font-size:14px;opacity:.8}
+.wallet-card .amount{font-size:36px;font-weight:700;margin:10px 0}
+
+/* Shop */
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+.shop-item{background:var(--white);border-radius:10px;overflow:hidden;cursor:pointer}
+.shop-item .emoji{font-size:48px;text-align:center;padding:20px;background:var(--input-bg)}
+.shop-item .info{padding:8px}
+.shop-item .info .name{font-size:14px;font-weight:500}
+.shop-item .info .price{font-size:15px;color:var(--red);font-weight:600}
+.shop-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--white);border-top:1px solid var(--border);flex-shrink:0}
+
+/* Forum */
+.forum-card{padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border)}
+.forum-card .fc-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.forum-card .fc-header img{width:32px;height:32px;border-radius:50%}
+.forum-card .fc-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.forum-card .fc-content{font-size:14px;color:var(--text2);line-height:1.5}
+.forum-card .fc-stats{display:flex;gap:16px;margin-top:8px;font-size:13px;color:var(--text3)}
+
+/* Modal */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--white);border-radius:12px;width:85%;max-width:360px;max-height:85vh;overflow-y:auto;padding:20px}
+.modal-box h3{font-size:17px;text-align:center;margin-bottom:16px}
+.modal-box .modal-btns{display:flex;gap:10px;margin-top:16px}
+.modal-box .modal-btns button{flex:1;padding:10px;border:none;border-radius:8px;font-size:15px;cursor:pointer}
+.modal-box .modal-btns .cancel{background:var(--input-bg);color:var(--text)}
+.modal-box .modal-btns .confirm{background:var(--green);color:#fff}
+
+/* Toast */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;z-index:2000;pointer-events:none;animation:fadeInOut 2s ease}
+@keyframes fadeInOut{0%{opacity:0}15%{opacity:1}85%{opacity:1}100%{opacity:0}}
+
+/* Image viewer */
+.img-viewer{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:3000;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.img-viewer img{max-width:100%;max-height:100%;object-fit:contain}
+
+/* Auth page */
+.auth-page{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg,#f5f7fa,#c3cfe2);padding:24px}
+.auth-box{background:var(--white);border-radius:16px;padding:32px 24px;width:100%;max-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.1)}
+.auth-box .logo{text-align:center;font-size:48px;margin-bottom:8px}
+.auth-box h2{text-align:center;font-size:20px;margin-bottom:24px;color:var(--text)}
+.auth-box input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:8px;font-size:15px;margin-bottom:12px;outline:none}
+.auth-box input:focus{border-color:var(--green)}
+.auth-box .auth-err{color:var(--red);font-size:13px;text-align:center;margin-bottom:8px}
+.auth-box .auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--blue);cursor:pointer}
+
+/* Loading */
+.typing-indicator{display:flex;gap:4px;padding:10px 14px}
+.typing-indicator span{width:8px;height:8px;border-radius:50%;background:var(--text3);animation:typing 1.4s infinite}
+.typing-indicator span:nth-child(2){animation-delay:.2s}
+.typing-indicator span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-8px)}}
+
+/* Backpack grid */
+.bp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px}
+.bp-item{background:var(--white);border-radius:10px;padding:12px;text-align:center}
+.bp-item .emoji{font-size:36px}
+.bp-item .name{font-size:13px;margin-top:4px}
+.bp-item .count{font-size:12px;color:var(--text3)}
+
+/* Sticker grid */
+.stk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+.stk-item{text-align:center;cursor:pointer;position:relative}
+.stk-item img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;background:var(--input-bg)}
+.stk-item .desc{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* WB */
+.wb-card{padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border);cursor:pointer}
+.wb-card .wb-name{font-size:15px;font-weight:600}
+.wb-card .wb-meta{font-size:12px;color:var(--text3);margin-top:2px}
+.wb-card .wb-preview{font-size:13px;color:var(--text2);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Media */
+.media-card{display:flex;align-items:center;padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border);cursor:pointer}
+.media-card .thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;margin-right:12px;background:var(--input-bg)}
+.media-card .info{flex:1}
+.media-card .info .name{font-size:15px}
+.media-card .info .meta{font-size:12px;color:var(--text3)}
+
+/* OA */
+.oa-item{display:flex;align-items:center;padding:12px 16px;background:var(--white);border-bottom:1px solid var(--border)}
+.oa-item .oa-icon{font-size:36px;margin-right:12px}
+.oa-item .oa-info{flex:1}
+.oa-item .oa-info .name{font-size:15px;font-weight:500}
+.oa-item .oa-info .desc{font-size:12px;color:var(--text3)}
+
+/* Article */
+.article-view{padding:20px 16px}
+.article-view h1{font-size:22px;font-weight:700;line-height:1.4;margin-bottom:12px}
+.article-view .meta{font-size:12px;color:var(--text3);margin-bottom:20px}
+.article-view .body{font-size:16px;line-height:1.8}
+.article-view .body p{margin-bottom:12px}
+
+/* RP detail */
+.rp-detail{display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+.rp-detail .rp-icon{font-size:64px;margin-bottom:16px}
+.rp-detail .rp-from{font-size:18px;font-weight:600}
+.rp-detail .rp-wish{font-size:14px;color:var(--text2);margin:8px 0}
+.rp-detail .rp-amount{font-size:48px;font-weight:700;color:var(--orange);margin:16px 0}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:0;background:transparent}
+
+/* Responsive */
+@media(min-width:431px){
+  #app{border-left:1px solid #333;border-right:1px solid #333}
+}
+
+/* Fix for form in section item */
+.section-item input[type="file"]{display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ================= UTILITY LAYER (U) =================
+const U = {
+  uid: () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2,8),
+  ts: () => Date.now(),
+  fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts), now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (d.toDateString() === now.toDateString()) return hm;
+    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate()-1);
+    if (d.toDateString() === yesterday.toDateString()) return '昨天 ' + hm;
+    return `${d.getMonth()+1}/${d.getDate()} ${hm}`;
+  },
+  fmtDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+  hash(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  },
+  colors: ['#f56c6c','#e6a23c','#67c23a','#409eff','#909399','#9b59b6','#1abc9c','#e74c3c','#3498db','#2ecc71','#f39c12','#8e44ad'],
+  avatarSvg(name) {
+    const c = U.colors[U.hash(name||'?') % U.colors.length];
+    const ch = (name||'?').slice(0,1);
+    return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="8" fill="${c}"/><text x="40" y="52" text-anchor="middle" fill="#fff" font-size="36" font-family="sans-serif">${ch}</text></svg>`)}`;
+  },
+  esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  },
+  nl2br(s) { return U.esc(s).replace(/\n/g,'<br>'); },
+  truncate(s, n=80) { return s && s.length > n ? s.slice(0,n)+'...' : (s||''); },
+  randomPick(arr) { return arr[Math.floor(Math.random()*arr.length)]; },
+  sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+};
+
+// ================= SERVER COMMUNICATION (SV) =================
+const SV = {
+  token: localStorage.getItem('wcs_token') || '',
+  setToken(t) { this.token = t; if(t) localStorage.setItem('wcs_token', t); else localStorage.removeItem('wcs_token'); },
+  async req(method, url, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (this.token) opts.headers['x-token'] = this.token;
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Request failed');
+    return j;
+  },
+  get(url) { return this.req('GET', url); },
+  post(url, body) { return this.req('POST', url, body); },
+  async upload(file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch('/api/upload', { method: 'POST', headers: { 'x-token': this.token }, body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Upload failed');
+    return j.url;
+  }
+};
+// ================= DATA LAYER (D) =================
+const D = {
+  defaults: {
+    apiEndpoint: '', apiKey: '', modelId: '', availableModels: [], maxTokens: 4096, temperature: 0.8,
+    playerName: '我', playerAvatar: '', playerPersona: '', playerId: 'wxid_player', playerSignature: '',
+    walletBalance: 8888.88, backpack: [],
+    friends: [], groups: [], chatHistories: {}, moments: [],
+    followedOA: [], shoppingCart: [], forumCache: [],
+    chatBg: '', momentBg: '', chatBgPerChat: {},
+    stickers: [], worldBooks: [], mediaLibraries: [],
+    memorySummaries: {}, forumWorldBooks: [],
+    offlineHistories: {}, sharedMemories: {},
+    worldBookCategories: { onlineGlobal:[], onlineLocal:{}, offlineGlobal:[], offlineLocal:{}, momentsGlobal:[], momentsLocal:{} },
+    globalMediaIndex: { images:[], videos:[] }
+  },
+  data: {},
+  dirty: false,
+  saveTimer: null,
+
+  async load() {
+    try {
+      const d = await SV.get('/api/data');
+      this.data = { ...JSON.parse(JSON.stringify(this.defaults)), ...d };
+    } catch(e) {
+      this.data = JSON.parse(JSON.stringify(this.defaults));
+    }
+  },
+  save() {
+    this.dirty = true;
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => this.forceSave(), 2000);
+  },
+  async forceSave() {
+    if (!this.dirty) return;
+    this.dirty = false;
+    try { await SV.post('/api/data', this.data); } catch(e) { console.error('Save failed:', e); }
+  },
+  get(k) { return this.data[k] !== undefined ? this.data[k] : this.defaults[k]; },
+  set(k, v) { this.data[k] = v; this.save(); },
+
+  // Friends
+  getFriends() { return this.get('friends') || []; },
+  getFriend(id) { return this.getFriends().find(f => f.id === id); },
+  getFriendByName(name) { return this.getFriends().find(f => f.name === name); },
+  addFriend(f) { const fs = this.getFriends(); fs.push(f); this.set('friends', fs); },
+  updateFriend(id, updates) {
+    const fs = this.getFriends();
+    const idx = fs.findIndex(f => f.id === id);
+    if (idx >= 0) { Object.assign(fs[idx], updates); this.set('friends', fs); }
+  },
+  removeFriend(id) { this.set('friends', this.getFriends().filter(f => f.id !== id)); },
+
+  // Groups
+  getGroups() { return this.get('groups') || []; },
+  getGroup(id) { return this.getGroups().find(g => g.id === id); },
+  addGroup(g) { const gs = this.getGroups(); gs.push(g); this.set('groups', gs); },
+  updateGroup(id, updates) {
+    const gs = this.getGroups();
+    const idx = gs.findIndex(g => g.id === id);
+    if (idx >= 0) { Object.assign(gs[idx], updates); this.set('groups', gs); }
+  },
+
+  // Chat History
+  getHistory(chatId) { const h = this.get('chatHistories') || {}; return h[chatId] || []; },
+  addMsg(chatId, msg) {
+    const h = this.data.chatHistories || (this.data.chatHistories = {});
+    if (!h[chatId]) h[chatId] = [];
+    h[chatId].push(msg);
+    this.save();
+  },
+  delMsg(chatId, msgId) {
+    const h = this.data.chatHistories;
+    if (h && h[chatId]) { h[chatId] = h[chatId].filter(m => m.id !== msgId); this.save(); }
+  },
+  delMsgs(chatId, msgIds) {
+    const h = this.data.chatHistories;
+    if (h && h[chatId]) { const s = new Set(msgIds); h[chatId] = h[chatId].filter(m => !s.has(m.id)); this.save(); }
+  },
+  clearHistory(chatId) {
+    const h = this.data.chatHistories;
+    if (h) { h[chatId] = []; this.save(); }
+  },
+
+  // Offline
+  getOfflineHistory(chatId) { const o = this.get('offlineHistories') || {}; return o[chatId] || []; },
+  addOfflineMsg(chatId, msg) {
+    const o = this.data.offlineHistories || (this.data.offlineHistories = {});
+    if (!o[chatId]) o[chatId] = [];
+    o[chatId].push(msg);
+    this.save();
+  },
+  delOfflineMsgs(chatId, msgIds) {
+    const o = this.data.offlineHistories;
+    if (o && o[chatId]) { const s = new Set(msgIds); o[chatId] = o[chatId].filter(m => !s.has(m.id)); this.save(); }
+  },
+
+  // Memory
+  getMemorySummary(chatId) { return (this.get('memorySummaries') || {})[chatId] || ''; },
+  setMemorySummary(chatId, s) {
+    const m = this.data.memorySummaries || (this.data.memorySummaries = {});
+    m[chatId] = s; this.save();
+  },
+
+  // Shared Memory
+  getSharedMemories(chatId) { return (this.get('sharedMemories') || {})[chatId] || []; },
+  addSharedMemory(chatId, mem) {
+    const sm = this.data.sharedMemories || (this.data.sharedMemories = {});
+    if (!sm[chatId]) sm[chatId] = [];
+    sm[chatId].push(mem);
+    this.save();
+  },
+  removeSharedMemory(chatId, idx) {
+    const sm = this.data.sharedMemories;
+    if (sm && sm[chatId]) { sm[chatId].splice(idx, 1); this.save(); }
+  },
+  updateSharedMemory(chatId, idx, mem) {
+    const sm = this.data.sharedMemories;
+    if (sm && sm[chatId] && sm[chatId][idx]) { sm[chatId][idx] = mem; this.save(); }
+  },
+
+  // World Books
+  getWorldBooks() { return this.get('worldBooks') || []; },
+  getAllWBContent(friendId) {
+    const wbs = this.getWorldBooks();
+    return wbs.filter(w => w.type === 'global' || (w.type === 'character' && w.targets && w.targets.includes(friendId))).map(w => w.content).join('\n\n');
+  },
+
+  // Stickers
+  getStickers() { return this.get('stickers') || []; },
+  addSticker(s) { const ss = this.getStickers(); ss.push(s); this.set('stickers', ss); },
+  addStickers(arr) { const ss = this.getStickers(); ss.push(...arr); this.set('stickers', ss); },
+  removeSticker(idx) { const ss = this.getStickers(); ss.splice(idx, 1); this.set('stickers', ss); },
+
+  // Media
+  getMediaLibs() { return this.get('mediaLibraries') || []; },
+  getMediaLib(id) { return this.getMediaLibs().find(m => m.id === id); },
+
+  // Backpack
+  addBackpack(item) { const bp = this.get('backpack') || []; bp.push(item); this.set('backpack', bp); },
+  removeBackpack(idx) { const bp = this.get('backpack'); bp.splice(idx, 1); this.set('backpack', bp); },
+
+  // Chat Background
+  getChatBg(chatId) { return (this.get('chatBgPerChat') || {})[chatId] || this.get('chatBg') || ''; },
+  setChatBg(chatId, url) {
+    const c = this.data.chatBgPerChat || (this.data.chatBgPerChat = {});
+    c[chatId] = url; this.save();
+  },
+
+  // Media Index
+  addToMediaIndex(type, url) {
+    const idx = this.data.globalMediaIndex || (this.data.globalMediaIndex = {images:[], videos:[]});
+    if (type === 'image' && !idx.images.includes(url)) { idx.images.push(url); this.save(); }
+    if (type === 'video' && !idx.videos.includes(url)) { idx.videos.push(url); this.save(); }
+  },
+  getMediaIndex() { return this.get('globalMediaIndex') || {images:[], videos:[]}; },
+
+  // WB Categories
+  getWBC(cat) { return (this.get('worldBookCategories') || {})[cat] || (typeof (this.get('worldBookCategories')||{})[cat] === 'object' && !Array.isArray((this.get('worldBookCategories')||{})[cat]) ? {} : []); },
+  buildCategoryWorldContext(mode, chatId) {
+    const wbc = this.get('worldBookCategories') || {};
+    let parts = [];
+    const globalKey = mode + 'Global';
+    const localKey = mode + 'Local';
+    if (Array.isArray(wbc[globalKey])) parts.push(...wbc[globalKey].map(e=>e.content||''));
+    const local = wbc[localKey] || {};
+    if (chatId && Array.isArray(local[chatId])) parts.push(...local[chatId].map(e=>e.content||''));
+    return parts.filter(Boolean).join('\n\n');
+  }
+};
+// ================= AI LAYER =================
+const AI = {
+  getBase() {
+    let ep = D.get('apiEndpoint') || '';
+    return ep.replace(/\/+$/, '');
+  },
+  async fetchModels() {
+    const base = this.getBase();
+    const r = await fetch(base + '/v1/models', { headers: { 'Authorization': 'Bearer ' + D.get('apiKey') } });
+    const j = await r.json();
+    return (j.data || []).map(m => m.id);
+  },
+  async gen(system, messages, opts = {}) {
+    const base = this.getBase();
+    const body = {
+      model: D.get('modelId'),
+      messages: [{ role: 'system', content: system }, ...messages],
+      max_tokens: opts.maxTokens || D.get('maxTokens') || 4096,
+      temperature: opts.temperature !== undefined ? opts.temperature : D.get('temperature') || 0.8,
+      stream: false
+    };
+    const r = await fetch(base + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + D.get('apiKey') },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.text(); throw new Error('AI Error: ' + e); }
+    const j = await r.json();
+    return j.choices[0].message.content;
+  },
+  parseJSON(text) {
+    // Try to find JSON in the response
+    const patterns = [
+      /```json\s*([\s\S]*?)```/,
+      /```\s*([\s\S]*?)```/,
+      /(\[[\s\S]*\])/,
+      /(\{[\s\S]*\})/
+    ];
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m) { try { return JSON.parse(m[1]); } catch(e) {} }
+    }
+    try { return JSON.parse(text); } catch(e) { return null; }
+  },
+
+  buildWorldContext(friendId, mode='online') {
+    let parts = [];
+    // Global world books
+    const wbs = D.getWorldBooks();
+    wbs.forEach(w => {
+      if (w.type === 'global') parts.push(w.content);
+      if (w.type === 'character' && w.targets && w.targets.includes(friendId)) parts.push(w.content);
+    });
+    // Category world books
+    parts.push(D.buildCategoryWorldContext(mode, friendId));
+    return parts.filter(Boolean).join('\n\n');
+  },
+
+  async chatReply(chatId, isGroup) {
+    const friend = D.getFriend(chatId);
+    const group = isGroup ? D.getGroup(chatId) : null;
+    const history = D.getHistory(chatId);
+    const last30 = history.slice(-30);
+    const player = D.get('playerName');
+    const playerPersona = D.get('playerPersona');
+    const memory = D.getMemorySummary(chatId);
+    const sharedMem = D.getSharedMemories(chatId);
+    const wb = this.buildWorldContext(chatId, 'online');
+
+    let charDesc = '';
+    if (isGroup && group) {
+      const memberDescs = (group.members || []).map(mid => {
+        const f = D.getFriend(mid);
+        return f ? `${f.name}: ${f.persona || '无特别设定'}` : '';
+      }).filter(Boolean).join('\n');
+      charDesc = `群聊"${group.name}"的成员:\n${memberDescs}`;
+    } else if (friend) {
+      charDesc = `角色: ${friend.name}\n人设: ${friend.persona || '无特别设定'}\n风格: ${friend.style || '自然聊天'}`;
+    }
+
+    const system = `你是一个微信聊天模拟器。根据角色人设生成回复。
+
+${wb ? '【世界观设定】\n'+wb+'\n' : ''}
+【角色信息】
+${charDesc}
+
+【玩家信息】
+名字: ${player}
+${playerPersona ? '人设: '+playerPersona : ''}
+
+${memory ? '【历史记忆摘要】\n'+memory+'\n' : ''}
+${sharedMem.length > 0 ? '【共享记忆】\n'+sharedMem.map(m=>m.content||m).join('\n')+'\n' : ''}
+
+【要求】
+- 以JSON格式回复: ${isGroup ? '[{"sender":"角色名","text":"消息内容","type":"text"}]' : '{"text":"消息内容","type":"text"}'}
+- type可选: text, image, sticker, location, pat, system
+- 如果type是image, 增加 "imageUrl":"图片描述或URL"
+- 如果type是location, 增加 "location":"地点名称"
+- 保持角色性格一致
+- 回复要自然、口语化
+- 群聊时可能有多个角色回复,返回数组
+- 只返回JSON，不要其他内容`;
+
+    const messages = last30.map(m => ({
+      role: m.sender === player || m.senderId === 'player' ? 'user' : 'assistant',
+      content: `[${m.senderName || m.sender || '系统'}]: ${m.text || m.content || '['+m.type+']'}`
+    }));
+
+    const raw = await this.gen(system, messages);
+    return this.parseJSON(raw) || { text: raw, type: 'text' };
+  },
+
+  async genPlayerMessage(chatId, isGroup) {
+    const history = D.getHistory(chatId);
+    const last20 = history.slice(-20);
+    const player = D.get('playerName');
+    const persona = D.get('playerPersona');
+    const friend = D.getFriend(chatId);
+
+    const system = `你需要代替玩家"${player}"在微信聊天中发送消息。
+${persona ? '玩家人设: '+persona : ''}
+${friend ? '聊天对象: '+friend.name+' ('+friend.persona+')' : ''}
+
+要求:
+- 以JSON格式回复: {"text":"消息内容","type":"text"}
+- 模拟玩家的说话方式
+- 自然口语化
+- 只返回JSON`;
+
+    const messages = last20.map(m => ({
+      role: m.senderId === 'player' ? 'user' : 'assistant',
+      content: `[${m.senderName || m.sender}]: ${m.text || '['+m.type+']'}`
+    }));
+
+    const raw = await this.gen(system, messages);
+    return this.parseJSON(raw) || { text: raw, type: 'text' };
+  },
+
+  async summarizeMemory(chatId) {
+    const history = D.getHistory(chatId);
+    if (history.length < 5) return '对话内容太少，无需总结';
+    const oldSummary = D.getMemorySummary(chatId);
+    const msgs = history.slice(-50).map(m => `[${m.senderName||m.sender}]: ${m.text||'['+m.type+']'}`).join('\n');
+    
+    const system = `请总结以下聊天记录的关键信息，包括重要事件、情感变化、约定等。
+${oldSummary ? '之前的记忆摘要:\n'+oldSummary+'\n\n请在此基础上更新。' : ''}
+直接返回总结文本，不要JSON格式。简洁但全面，200-500字。`;
+
+    return await this.gen(system, [{ role: 'user', content: msgs }]);
+  },
+
+  async genMoments(count = 3) {
+    const friends = D.getFriends();
+    if (friends.length === 0) return [];
+    const player = D.get('playerName');
+    const friendList = friends.map(f => `${f.name}: ${U.truncate(f.persona||'',50)}`).join('\n');
+
+    const system = `生成${count}条微信朋友圈动态。角色列表:
+${friendList}
+玩家: ${player}
+
+以JSON数组格式回复，每条包含:
+{"authorId":"角色id","authorName":"名字","text":"正文","images":["图片描述"],"location":"地点或空","likes":["点赞人名"],"comments":[{"name":"评论人","text":"评论内容"}]}
+
+要求:
+- 内容多样(日常/美食/旅行/工作/心情/搞笑)
+- 图片用文字描述
+- 包含自然的点赞和评论互动
+- 只返回JSON数组`;
+
+    const raw = await this.gen(system, [{ role: 'user', content: `为这些角色生成${count}条朋友圈` }]);
+    return this.parseJSON(raw) || [];
+  },
+
+  async momentComments(moment, commenterName) {
+    const system = `你需要为微信朋友圈动态生成评论回复。
+朋友圈内容: "${U.truncate(moment.text||'',200)}"
+发布者: ${moment.authorName}
+评论者: ${commenterName}
+
+以JSON格式回复: {"text":"评论内容"}
+要求自然、口语化。只返回JSON。`;
+    const raw = await this.gen(system, [{ role: 'user', content: '生成一条评论' }]);
+    return this.parseJSON(raw) || { text: '👍' };
+  },
+
+  async generateFriendInfo(name) {
+    const system = `为微信好友生成详细信息。名字: "${name}"
+
+以JSON格式回复:
+{"name":"${name}","persona":"详细人设描述(100-200字,包括性格、职业、爱好、说话风格)","signature":"个性签名","style":"聊天风格描述"}
+
+要求有创意和个性。只返回JSON。`;
+    const raw = await this.gen(system, [{ role: 'user', content: '生成角色信息' }]);
+    return this.parseJSON(raw) || { name, persona: '', signature: '', style: '' };
+  },
+
+  async genShopItems(keyword) {
+    const system = `生成5-8个微信购物商品。${keyword ? '搜索关键词: '+keyword : '随机推荐'}
+
+以JSON数组格式回复:
+[{"name":"商品名","emoji":"一个相关emoji","price":价格数字,"desc":"简短描述"}]
+
+只返回JSON数组。`;
+    const raw = await this.gen(system, [{ role: 'user', content: keyword || '推荐商品' }]);
+    return this.parseJSON(raw) || [];
+  },
+
+  async genForumPosts(keyword) {
+    const friends = D.getFriends();
+    const names = friends.map(f => f.name).join(',');
+    const system = `生成3-5个论坛帖子。${keyword ? '话题: '+keyword : ''}
+可能的发帖人: ${names || '匿名用户'}
+
+以JSON数组格式回复:
+[{"author":"名字","authorAvatar":"","title":"标题","content":"正文(100-300字)","likes":数字,"replies":[{"author":"名字","content":"回复内容"}]}]
+
+只返回JSON数组。`;
+    const raw = await this.gen(system, [{ role: 'user', content: keyword || '生成帖子' }]);
+    return this.parseJSON(raw) || [];
+  },
+
+  async searchOA(keyword) {
+    const system = `搜索微信公众号。关键词: "${keyword}"
+
+以JSON数组格式回复:
+[{"name":"公众号名","emoji":"一个相关emoji","desc":"简介","category":"分类"}]
+
+生成3-5个结果。只返回JSON数组。`;
+    const raw = await this.gen(system, [{ role: 'user', content: keyword }]);
+    return this.parseJSON(raw) || [];
+  },
+
+  async genArticles(oaName) {
+    const system = `为公众号"${oaName}"生成2-3篇文章。
+
+以JSON数组格式回复:
+[{"title":"标题","summary":"摘要(50字)","content":"正文(300-800字)","date":"日期"}]
+
+只返回JSON数组。`;
+    const raw = await this.gen(system, [{ role: 'user', content: '推送文章' }]);
+    return this.parseJSON(raw) || [];
+  },
+
+  async offlineReply(chatId) {
+    const friend = D.getFriend(chatId);
+    const offHistory = D.getOfflineHistory(chatId);
+    const onHistory = D.getHistory(chatId);
+    const memory = D.getMemorySummary(chatId);
+    const wb = this.buildWorldContext(chatId, 'offline');
+    const player = D.get('playerName');
+
+    const system = `你是一个互动小说叙述者，为离线模式生成内容。
+
+${wb ? '【世界观】\n'+wb+'\n' : ''}
+角色: ${friend ? friend.name+' - '+friend.persona : '未知'}
+玩家: ${player} ${D.get('playerPersona')||''}
+${memory ? '【记忆】\n'+memory : ''}
+
+以JSON格式回复:
+{"narration":"叙述内容(200-500字，包含环境描写、动作、对话)","dialogue":{"sender":"角色名","text":"角色说的话"}}
+
+要求文学性强，有环境描写、心理活动。只返回JSON。`;
+
+    const context = [...onHistory.slice(-10), ...offHistory.slice(-10)].map(m =>
+      `[${m.senderName||m.sender||'旁白'}]: ${m.text||'['+m.type+']'}`
+    ).join('\n');
+
+    const raw = await this.gen(system, [{ role: 'user', content: context || '开始新故事' }]);
+    return this.parseJSON(raw) || { narration: raw, dialogue: null };
+  },
+
+  // Auto conversation generation
+  async genAutoConversation(chatId, rounds = 5, topic = '') {
+    const friend = D.getFriend(chatId);
+    const history = D.getHistory(chatId);
+    const player = D.get('playerName');
+    const persona = D.get('playerPersona');
+    const memory = D.getMemorySummary(chatId);
+    const wb = this.buildWorldContext(chatId, 'online');
+
+    const system = `生成一段${rounds}轮的完整微信对话。
+
+${wb ? '【世界观】\n'+wb+'\n' : ''}
+角色: ${friend ? friend.name+' - '+(friend.persona||'') : ''}
+玩家: ${player} ${persona ? '- '+persona : ''}
+${memory ? '【记忆】\n'+memory : ''}
+${topic ? '【对话主题/方向】\n'+topic : ''}
+
+以JSON数组格式回复，交替生成玩家和角色的消息:
+[{"sender":"player","name":"${player}","text":"消息","type":"text"},{"sender":"char","name":"${friend?friend.name:'角色'}","text":"回复","type":"text"},...]
+
+要求:
+- 对话自然流畅
+- 符合双方人设
+- ${rounds}轮完整对话(一轮=玩家发+角色回)
+- type可以是text/image/sticker
+- 如果type是image，加imageUrl字段
+- 只返回JSON数组`;
+
+    const msgs = history.slice(-10).map(m => `[${m.senderName||m.sender}]: ${m.text||'['+m.type+']'}`).join('\n');
+    const raw = await this.gen(system, [{ role: 'user', content: msgs || '开始对话' }], { maxTokens: 8192 });
+    return this.parseJSON(raw) || [];
+  },
+
+  // Generate daily moments for all friends
+  async genDailyMoments() {
+    const friends = D.getFriends();
+    const player = D.get('playerName');
+    const persona = D.get('playerPersona');
+    if (friends.length === 0) return [];
+
+    const friendList = friends.slice(0, 10).map(f => `${f.name}(${U.truncate(f.persona||'',30)})`).join(', ');
+    
+    const system = `为所有角色和玩家生成一天的朋友圈动态(早中晚)。
+
+角色: ${friendList}
+玩家: ${player} ${persona ? '('+U.truncate(persona,30)+')' : ''}
+
+以JSON数组格式回复(6-15条):
+[{"authorName":"名字","isPlayer":false,"text":"正文","images":["描述"],"location":"地点","time":"时段(早上/中午/下午/晚上)","likes":["人名"],"comments":[{"name":"人名","text":"评论"}]}]
+
+要求:
+- 每个角色1-2条
+- 玩家也有1-2条
+- 内容多样自然
+- 有互动(互相点赞评论)
+- 只返回JSON数组`;
+
+    const raw = await this.gen(system, [{ role: 'user', content: '生成今日朋友圈' }], { maxTokens: 8192 });
+    return this.parseJSON(raw) || [];
+  }
+};
+// ================= APPLICATION LAYER (App) =================
+const App = {
+  currentPage: '',
+  pageStack: [],
+  chatId: '',
+  chatIsGroup: false,
+  chatMode: 'online', // online/offline
+  selectMode: false,
+  selectedMsgs: new Set(),
+  showMore: false,
+  showStickerPanel: false,
+  editingWB: null,
+  editingMediaLib: null,
+  viewingOA: null,
+  viewingArticle: null,
+  viewingPost: null,
+  viewingRP: null,
+  viewingProfile: null,
+  isGenerating: false,
+  momentSelMode: false,
+  selectedMoments: new Set(),
+
+  async init() {
+    if (!SV.token) { this.renderAuth(); return; }
+    try {
+      await SV.get('/api/check');
+      await D.load();
+      this.switchTab('chat-list');
+    } catch(e) {
+      SV.setToken('');
+      this.renderAuth();
+    }
+  },
+
+  render(html) { document.getElementById('app').innerHTML = html; },
+
+  // ===== UI Components =====
+  statusBar() {
+    const now = new Date();
+    const t = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    return `<div class="status-bar"><div class="left">${t}</div><div class="right"><span class="ai-dot"></span><span>⚡</span><span>📶</span></div></div>`;
+  },
+
+  navbar(title, back = true, actions = '') {
+    return `<div class="navbar">${back ? '<div class="back" onclick="App.goBack()">‹ 返回</div>' : '<div class="back"></div>'}<div class="title">${U.esc(title)}</div><div class="action">${actions}</div></div>`;
+  },
+
+  tabbar(active) {
+    const tabs = [
+      { id: 'chat-list', icon: '💬', label: '微信' },
+      { id: 'contacts', icon: '👥', label: '通讯录' },
+      { id: 'discover', icon: '🌍', label: '发现' },
+      { id: 'me', icon: '👤', label: '我' }
+    ];
+    // Count unread
+    const unread = this.getUnreadCount();
+    return `<div class="tabbar">${tabs.map(t => `<div class="tab${active===t.id?' active':''}" onclick="App.switchTab('${t.id}')"><span class="icon">${t.icon}</span>${t.id==='chat-list'&&unread>0?`<span class="badge">${unread>99?'99+':unread}</span>`:''}<span class="label">${t.label}</span></div>`).join('')}</div>`;
+  },
+
+  getUnreadCount() {
+    // Simple unread count based on recent messages not from player
+    return 0; // TODO: implement proper unread tracking
+  },
+
+  toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  },
+
+  modal(title, body, onConfirm, confirmText='确定', cancelText='取消') {
+    const id = 'modal_' + Date.now();
+    const html = `<div class="modal-overlay" id="${id}"><div class="modal-box"><h3>${title}</h3>${body}<div class="modal-btns"><button class="cancel" onclick="App.closeModal('${id}')">${cancelText}</button><button class="confirm" onclick="(${onConfirm.toString()})();App.closeModal('${id}')">${confirmText}</button></div></div></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  closeModal(id) {
+    const el = id ? document.getElementById(id) : document.querySelector('.modal-overlay');
+    if (el) el.remove();
+  },
+
+  viewImg(url) {
+    const html = `<div class="img-viewer" onclick="this.remove()"><img src="${U.esc(url)}" onerror="this.src='${U.avatarSvg('?')}'"></div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+  },
+
+  nav(page, data) {
+    if (data) Object.assign(this, data);
+    this.pageStack.push(this.currentPage);
+    this.currentPage = page;
+    this.renderPage();
+  },
+
+  goBack() {
+    if (this.pageStack.length > 0) {
+      this.currentPage = this.pageStack.pop();
+    } else {
+      this.currentPage = 'chat-list';
+    }
+    this.selectMode = false;
+    this.selectedMsgs.clear();
+    this.showMore = false;
+    this.showStickerPanel = false;
+    this.renderPage();
+  },
+
+  switchTab(tab) {
+    this.pageStack = [];
+    this.currentPage = tab;
+    this.renderPage();
+  },
+
+  renderPage() {
+    const pages = {
+      'chat-list': () => this.pgChatList(),
+      'contacts': () => this.pgContacts(),
+      'discover': () => this.pgDiscover(),
+      'me': () => this.pgMe(),
+      'chat': () => this.pgChat(),
+      'moments': () => this.pgMoments(),
+      'compose-moment': () => this.pgComposeMoment(),
+      'wallet': () => this.pgWallet(),
+      'backpack': () => this.pgBackpack(),
+      'stickers': () => this.pgStickers(),
+      'worldbook': () => this.pgWorldBook(),
+      'wb-edit': () => this.pgWBEdit(),
+      'persona': () => this.pgPersona(),
+      'settings': () => this.pgSettings(),
+      'profile': () => this.pgProfile(),
+      'edit-profile': () => this.pgEditProfile(),
+      'oa-list': () => this.pgOAList(),
+      'oa-detail': () => this.pgOADetail(),
+      'article': () => this.pgArticle(),
+      'shop': () => this.pgShop(),
+      'forum': () => this.pgForum(),
+      'forum-detail': () => this.pgForumDetail(),
+      'rp-detail': () => this.pgRPDetail(),
+      'media-libs': () => this.pgMediaLibs(),
+      'media-lib-edit': () => this.pgMediaLibEdit()
+    };
+    const fn = pages[this.currentPage];
+    if (fn) this.render(fn());
+    // Scroll chat to bottom
+    if (this.currentPage === 'chat') {
+      setTimeout(() => {
+        const area = document.querySelector('.chat-area');
+        if (area) area.scrollTop = area.scrollHeight;
+      }, 50);
+    }
+  },
+
+  getAvatar(friend) {
+    if (friend && friend.avatar) return friend.avatar;
+    return U.avatarSvg(friend ? friend.name : '?');
+  },
+  getPlayerAvatar() {
+    return D.get('playerAvatar') || U.avatarSvg(D.get('playerName'));
+  },
+  // ===== AUTH =====
+  renderAuth() {
+    this.render(`<div class="auth-page"><div class="auth-box"><div class="logo">💬</div><h2>WeChatSim v5.0</h2><div id="authStatus">登录</div><input type="text" id="authUser" placeholder="用户名"><input type="password" id="authPass" placeholder="密码"><button class="btn-primary" onclick="App.doAuth()">登录</button><div class="auth-err" id="authErr"></div><div class="auth-switch" onclick="App.toggleAuthMode()">没有账号？注册</div></div></div>`);
+    this._authMode = 'login';
+  },
+  toggleAuthMode() {
+    this._authMode = this._authMode === 'login' ? 'register' : 'login';
+    document.getElementById('authStatus').textContent = this._authMode === 'login' ? '登录' : '注册';
+    document.querySelector('.auth-switch').textContent = this._authMode === 'login' ? '没有账号？注册' : '已有账号？登录';
+    document.querySelector('.btn-primary').textContent = this._authMode === 'login' ? '登录' : '注册';
+  },
+  async doAuth() {
+    const user = document.getElementById('authUser').value.trim();
+    const pass = document.getElementById('authPass').value;
+    if (!user || !pass) { document.getElementById('authErr').textContent = '请输入用户名和密码'; return; }
+    try {
+      const url = this._authMode === 'login' ? '/api/login' : '/api/register';
+      const r = await SV.post(url, { username: user, password: pass });
+      SV.setToken(r.token);
+      await D.load();
+      this.switchTab('chat-list');
+    } catch(e) {
+      document.getElementById('authErr').textContent = e.message;
+    }
+  },
+
+  // ===== CHAT LIST =====
+  pgChatList() {
+    const friends = D.getFriends();
+    const groups = D.getGroups();
+    const histories = D.data.chatHistories || {};
+    
+    // Build chat list items sorted by last message time
+    let items = [];
+    const addItem = (id, name, avatar, isGroup) => {
+      const hist = histories[id] || [];
+      const lastMsg = hist[hist.length - 1];
+      if (!lastMsg && !isGroup) return; // Skip if no messages
+      items.push({ id, name, avatar, isGroup, lastMsg, time: lastMsg ? lastMsg.ts : 0 });
+    };
+    
+    friends.forEach(f => addItem(f.id, f.name, this.getAvatar(f), false));
+    groups.forEach(g => addItem(g.id, g.name, U.avatarSvg(g.name), true));
+    
+    // Also add items that have chat history but might not be in friends (edge case)
+    items.sort((a, b) => b.time - a.time);
+
+    const listHtml = items.map(it => {
+      const lastText = it.lastMsg ? (it.lastMsg.type === 'image' ? '[图片]' : it.lastMsg.type === 'sticker' ? '[表情]' : it.lastMsg.type === 'redpacket' ? '[红包]' : it.lastMsg.type === 'gift' ? '[礼物]' : it.lastMsg.type === 'video' ? '[视频]' : it.lastMsg.type === 'location' ? '[位置]' : it.lastMsg.type === 'narrator' ? '[旁白]' : U.truncate(it.lastMsg.text || '', 30)) : '';
+      const prefix = it.lastMsg && it.isGroup && it.lastMsg.senderName ? it.lastMsg.senderName + ': ' : '';
+      return `<div class="list-item" onclick="App.openChat('${it.id}',${it.isGroup})"><img class="avatar" src="${U.esc(it.avatar)}" onerror="this.src='${U.avatarSvg(it.name)}'"><div class="info"><div class="name">${U.esc(it.name)}</div><div class="msg">${U.esc(prefix + lastText)}</div></div><div class="meta"><span class="time">${U.fmtTime(it.time)}</span></div></div>`;
+    }).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('微信', false, '<span onclick="App.showAddMenu()">➕</span>')}<div class="content"><div class="search-bar"><input placeholder="搜索" oninput="App.filterChatList(this.value)"></div><div id="chatListItems">${listHtml || '<div style="text-align:center;padding:40px;color:var(--text3)">暂无聊天<br>点击右上角➕添加好友开始</div>'}</div></div>${this.tabbar('chat-list')}</div>`;
+  },
+
+  filterChatList(q) {
+    // Simple filter - re-render would be better but this is quick
+    const items = document.querySelectorAll('#chatListItems .list-item');
+    items.forEach(el => {
+      const name = el.querySelector('.name').textContent.toLowerCase();
+      el.style.display = !q || name.includes(q.toLowerCase()) ? '' : 'none';
+    });
+  },
+
+  // ===== CONTACTS =====
+  pgContacts() {
+    const friends = D.getFriends();
+    const groups = D.getGroups();
+    const sortedFriends = [...friends].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const listHtml = sortedFriends.map(f => `<div class="list-item" onclick="App.viewContactProfile('${f.id}')"><img class="avatar" src="${U.esc(this.getAvatar(f))}" onerror="this.src='${U.avatarSvg(f.name)}'"><div class="info"><div class="name">${U.esc(f.name)}</div></div></div>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('通讯录', false, '<span onclick="App.showAddMenu()">👤+</span>')}<div class="content"><div class="search-bar"><input placeholder="搜索联系人"></div><div class="section-item" onclick="App.showAddFriend()"><div class="left">👤 新的朋友</div><div class="right">›</div></div><div class="section-item" onclick="App.showGroupList()"><div class="left">👥 群聊 (${groups.length})</div><div class="right">›</div></div><div class="section-title">好友 (${friends.length})</div>${listHtml}</div>${this.tabbar('contacts')}</div>`;
+  },
+  // ===== DISCOVER =====
+  pgDiscover() {
+    return `<div class="page">${this.statusBar()}${this.navbar('发现', false)}<div class="content"><div class="section" style="margin-top:0"><div class="section-item" onclick="App.nav('moments')"><div class="left">🌅 朋友圈</div><div class="right">›</div></div></div><div class="section"><div class="section-item" onclick="App.nav('oa-list')"><div class="left">📰 公众号</div><div class="right">›</div></div><div class="section-item" onclick="App.nav('shop')"><div class="left">🛒 购物</div><div class="right">›</div></div><div class="section-item" onclick="App.nav('forum')"><div class="left">💬 论坛</div><div class="right">›</div></div></div></div>${this.tabbar('discover')}</div>`;
+  },
+
+  // ===== ME =====
+  pgMe() {
+    const name = D.get('playerName');
+    const avatar = this.getPlayerAvatar();
+    const sig = D.get('playerSignature') || '';
+    const balance = D.get('walletBalance') || 0;
+    const bpCount = (D.get('backpack') || []).length;
+    
+    return `<div class="page">${this.statusBar()}${this.navbar('我', false)}<div class="content"><div class="list-item" style="padding:20px 16px"><img class="avatar" src="${U.esc(avatar)}" style="width:60px;height:60px;border-radius:10px" onerror="this.src='${U.avatarSvg(name)}'"><div class="info"><div class="name" style="font-size:18px">${U.esc(name)}</div><div class="msg">${U.esc(sig || D.get('playerId'))}</div></div></div><div class="section"><div class="section-item" onclick="App.nav('wallet')"><div class="left">💰 钱包</div><div class="right">¥${balance.toFixed(2)} ›</div></div><div class="section-item" onclick="App.nav('backpack')"><div class="left">🎒 背包</div><div class="right">${bpCount}件 ›</div></div></div><div class="section"><div class="section-item" onclick="App.nav('stickers')"><div class="left">😄 表情包</div><div class="right">›</div></div><div class="section-item" onclick="App.nav('media-libs')"><div class="left">📂 媒体库</div><div class="right">›</div></div><div class="section-item" onclick="App.nav('worldbook')"><div class="left">📖 世界书</div><div class="right">›</div></div></div><div class="section"><div class="section-item" onclick="App.nav('persona')"><div class="left">✏️ 个人设置</div><div class="right">›</div></div><div class="section-item" onclick="App.nav('settings')"><div class="left">⚙️ API设置</div><div class="right">›</div></div></div><div class="section"><div class="section-item" onclick="App.logout()" style="justify-content:center;color:var(--red)">🚪 退出登录</div></div><div style="height:20px"></div></div>${this.tabbar('me')}</div>`;
+  },
+
+  async logout() {
+    if (!confirm('确定退出登录？')) return;
+    await D.forceSave();
+    try { await SV.post('/api/logout'); } catch(e) {}
+    SV.setToken('');
+    this.renderAuth();
+  },
+  // ===== CHAT PAGE =====
+  openChat(id, isGroup) {
+    this.chatId = id;
+    this.chatIsGroup = isGroup;
+    this.selectMode = false;
+    this.selectedMsgs.clear();
+    this.showMore = false;
+    this.showStickerPanel = false;
+    this.nav('chat');
+  },
+
+  pgChat() {
+    const id = this.chatId;
+    const isGroup = this.chatIsGroup;
+    const friend = D.getFriend(id);
+    const group = isGroup ? D.getGroup(id) : null;
+    const name = isGroup ? (group ? group.name : '群聊') : (friend ? friend.name : '聊天');
+    const mode = this.chatMode;
+    const history = mode === 'offline' ? D.getOfflineHistory(id) : D.getHistory(id);
+    const bg = D.getChatBg(id);
+    const player = D.get('playerName');
+    const playerAvatar = this.getPlayerAvatar();
+
+    // Messages
+    let msgsHtml = '';
+    let lastTime = 0;
+    history.forEach((m, idx) => {
+      // Time separator
+      if (m.ts - lastTime > 5 * 60 * 1000) {
+        msgsHtml += `<div class="msg-time">${U.fmtTime(m.ts)}</div>`;
+      }
+      lastTime = m.ts;
+
+      if (m.type === 'system') {
+        msgsHtml += `<div class="msg-system">${U.esc(m.text)}</div>`;
+        return;
+      }
+      if (m.type === 'pat') {
+        msgsHtml += `<div class="msg-system">${U.esc(m.text)}</div>`;
+        return;
+      }
+      if (m.type === 'narrator') {
+        msgsHtml += `<div class="narrator-row">${U.nl2br(m.text)}</div>`;
+        return;
+      }
+
+      const isSelf = m.senderId === 'player';
+      const avatar = isSelf ? playerAvatar : this.getAvatar(m.senderFriend || D.getFriend(m.senderId) || { name: m.senderName || m.sender });
+      const senderName = m.senderName || m.sender || '';
+
+      let bubbleContent = '';
+      switch(m.type) {
+        case 'image':
+          bubbleContent = `<div class="bubble img-bubble"><img src="${U.esc(m.imageUrl || m.text)}" onclick="App.viewImg('${U.esc(m.imageUrl || m.text)}')" onerror="this.src='${U.avatarSvg('图')}'"></div>`;
+          break;
+        case 'sticker':
+          bubbleContent = `<div class="bubble img-bubble"><img src="${U.esc(m.imageUrl || m.stickerUrl || '')}" style="max-width:120px;max-height:120px" onerror="this.parentElement.innerHTML='${U.esc(m.text||'[表情]')}'"></div>`;
+          break;
+        case 'video':
+          bubbleContent = `<div class="bubble vid-bubble" style="width:200px;height:150px;display:flex;align-items:center;justify-content:center" onclick="App.toast('视频播放模拟')"><span class="play-icon">▶</span></div>`;
+          break;
+        case 'location':
+          bubbleContent = `<div class="bubble loc-bubble"><span class="loc-icon">📍</span> ${U.esc(m.location || m.text)}</div>`;
+          break;
+        case 'redpacket':
+          bubbleContent = `<div class="bubble rp-bubble${m.opened?' opened':''}" onclick="App.openRP('${m.id}')"><div class="rp-title">🧧 ${U.esc(m.rpWish || '恭喜发财')}</div><div class="rp-label">微信红包</div></div>`;
+          break;
+        case 'gift':
+          bubbleContent = `<div class="bubble gift-bubble">🎁 ${U.esc(m.giftName || '礼物')}</div>`;
+          break;
+        default:
+          bubbleContent = `<div class="bubble">${U.nl2br(m.text || '')}</div>`;
+      }
+
+      const checkHtml = this.selectMode ? `<div class="m-check${this.selectedMsgs.has(m.id)?' checked':''}" onclick="App.toggleMsgSel('${m.id}')">✓</div>` : '';
+      const showSender = isGroup && !isSelf;
+
+      msgsHtml += `<div class="msg-row${isSelf?' self':''}">${checkHtml}<img class="m-avatar" src="${U.esc(avatar)}" onerror="this.src='${U.avatarSvg(senderName||'?')}'" onclick="App.viewContactProfile('${m.senderId||''}')" ><div class="m-bubble">${showSender ? `<div class="sender">${U.esc(senderName)}</div>` : ''}${bubbleContent}</div></div>`;
+    });
+
+    // Typing indicator
+    if (this.isGenerating) {
+      msgsHtml += `<div class="msg-row"><img class="m-avatar" src="${U.esc(this.getAvatar(friend))}" onerror="this.src='${U.avatarSvg(name)}'"><div class="m-bubble"><div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div></div></div>`;
+    }
+
+    // Quick buttons
+    const quickBtns = `<div class="quick-btns"><button class="qb" onclick="App.doChatReply()">💬角色回复</button><button class="qb" onclick="App.doPlayerAutoReply()">✍️代写玩家</button><button class="qb" onclick="App.doCharReroll()">🔄角色重回</button><button class="qb" onclick="App.doPlayerReroll()">🔄玩家重回</button><button class="qb" onclick="App.doAutoConversation()">⚡自动对话</button><button class="qb" onclick="App.toggleChatMode()">📖${mode==='offline'?'线上':'线下'}</button></div>`;
+
+    // More panel
+    const moreHtml = `<div class="chat-extras${this.showMore?' show':''}"><div class="grid"><div class="item" onclick="App.sendPhoto()"><div class="icon">📷</div><div class="label">照片</div></div><div class="item" onclick="App.sendVideo()"><div class="icon">🎬</div><div class="label">视频</div></div><div class="item" onclick="App.sendRP()"><div class="icon">🧧</div><div class="label">红包</div></div><div class="item" onclick="App.sendGift()"><div class="icon">🎁</div><div class="label">礼物</div></div><div class="item" onclick="App.doPat()"><div class="icon">👋</div><div class="label">拍拍</div></div><div class="item" onclick="App.sendLocation()"><div class="icon">📍</div><div class="label">定位</div></div><div class="item" onclick="App.sendFromBP()"><div class="icon">🎒</div><div class="label">背包</div></div></div></div>`;
+
+    // Sticker panel
+    const stickers = D.getStickers();
+    const stickerHtml = `<div class="sticker-panel${this.showStickerPanel?' show':''}"><div class="grid">${stickers.map((s,i) => `<img src="${U.esc(s.url)}" onclick="App.sendSticker(${i})" onerror="this.style.display='none'">`).join('')}${stickers.length===0?'<div style="grid-column:span 4;text-align:center;color:var(--text3);padding:20px">暂无表情包</div>':''}</div></div>`;
+
+    // Select bar
+    const selectBar = this.selectMode ? `<div class="select-bar"><button class="btn" style="background:var(--input-bg)" onclick="App.exitSelectMode()">取消</button><span>已选 ${this.selectedMsgs.size} 条</span><button class="btn" style="background:var(--red);color:#fff" onclick="App.deleteSelectedMsgs()">删除</button></div>` : '';
+
+    // Menu actions
+    const menuAction = `<span onclick="App.chatMenu()">⋯</span>`;
+    const modeLabel = mode === 'offline' ? ' [线下]' : '';
+
+    return `<div class="page">${this.statusBar()}${quickBtns}${this.navbar(name + modeLabel, true, menuAction)}<div class="chat-area" style="${bg?'background:url('+U.esc(bg)+') center/cover no-repeat':''}">${msgsHtml}</div>${selectBar}<div class="chat-input-bar"><div class="btn" onclick="App.toggleStickerPanel()">😊</div><textarea id="chatInput" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();App.sendMsg()}"></textarea><div class="btn" onclick="App.toggleMore()">➕</div><button class="send-btn" onclick="App.sendMsg()">发送</button></div>${stickerHtml}${moreHtml}</div>`;
+  },
+
+  // Chat methods
+  sendMsg() {
+    const input = document.getElementById('chatInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+
+    const msg = {
+      id: U.uid(), type: 'text', text,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'),
+      ts: U.ts()
+    };
+
+    if (this.chatMode === 'offline') {
+      D.addOfflineMsg(this.chatId, msg);
+    } else {
+      D.addMsg(this.chatId, msg);
+    }
+    this.renderPage();
+  },
+
+  async doChatReply() {
+    if (this.isGenerating) return;
+    this.isGenerating = true;
+    this.renderPage();
+    try {
+      const reply = await AI.chatReply(this.chatId, this.chatIsGroup);
+      const replies = Array.isArray(reply) ? reply : [reply];
+      const friend = D.getFriend(this.chatId);
+      
+      for (const r of replies) {
+        const senderName = r.sender || r.senderName || (friend ? friend.name : '角色');
+        const senderFriend = D.getFriendByName(senderName) || friend;
+        const msg = {
+          id: U.uid(),
+          type: r.type || 'text',
+          text: r.text || r.content || '',
+          sender: senderName,
+          senderId: senderFriend ? senderFriend.id : this.chatId,
+          senderName,
+          ts: U.ts(),
+          imageUrl: r.imageUrl,
+          location: r.location,
+          stickerUrl: r.stickerUrl
+        };
+        D.addMsg(this.chatId, msg);
+        await U.sleep(300); // Small delay between messages
+      }
+    } catch(e) {
+      this.toast('AI回复失败: ' + e.message);
+    }
+    this.isGenerating = false;
+    this.renderPage();
+  },
+
+  async doPlayerAutoReply() {
+    if (this.isGenerating) return;
+    this.isGenerating = true;
+    this.renderPage();
+    try {
+      const reply = await AI.genPlayerMessage(this.chatId, this.chatIsGroup);
+      const msg = {
+        id: U.uid(), type: reply.type || 'text', text: reply.text || '',
+        sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'),
+        ts: U.ts(), imageUrl: reply.imageUrl
+      };
+      if (this.chatMode === 'offline') D.addOfflineMsg(this.chatId, msg);
+      else D.addMsg(this.chatId, msg);
+    } catch(e) { this.toast('生成失败: ' + e.message); }
+    this.isGenerating = false;
+    this.renderPage();
+  },
+
+  async doCharReroll() {
+    // Delete last AI message and regenerate
+    const history = D.getHistory(this.chatId);
+    const lastAI = [...history].reverse().find(m => m.senderId !== 'player');
+    if (lastAI) D.delMsg(this.chatId, lastAI.id);
+    await this.doChatReply();
+  },
+
+  async doPlayerReroll() {
+    const history = D.getHistory(this.chatId);
+    const lastPlayer = [...history].reverse().find(m => m.senderId === 'player');
+    if (lastPlayer) D.delMsg(this.chatId, lastPlayer.id);
+    await this.doPlayerAutoReply();
+  },
+
+  async doAutoConversation() {
+    const rounds = prompt('生成几轮对话？(1轮=玩家+角色各1条)', '5');
+    if (!rounds) return;
+    const topic = prompt('对话主题/方向(留空=自由发挥)', '');
+    
+    this.isGenerating = true;
+    this.renderPage();
+    try {
+      const conv = await AI.genAutoConversation(this.chatId, parseInt(rounds) || 5, topic || '');
+      if (Array.isArray(conv)) {
+        const friend = D.getFriend(this.chatId);
+        let timeOffset = 0;
+        for (const c of conv) {
+          timeOffset += Math.random() * 30000 + 10000; // 10-40s between messages
+          const isPlayer = c.sender === 'player' || c.name === D.get('playerName');
+          const msg = {
+            id: U.uid(),
+            type: c.type || 'text',
+            text: c.text || '',
+            sender: c.name || (isPlayer ? D.get('playerName') : (friend ? friend.name : '角色')),
+            senderId: isPlayer ? 'player' : (friend ? friend.id : this.chatId),
+            senderName: c.name || (isPlayer ? D.get('playerName') : (friend ? friend.name : '角色')),
+            ts: U.ts() - (conv.length - conv.indexOf(c)) * 30000 + timeOffset,
+            imageUrl: c.imageUrl
+          };
+          D.addMsg(this.chatId, msg);
+        }
+      }
+    } catch(e) { this.toast('生成失败: ' + e.message); }
+    this.isGenerating = false;
+    this.renderPage();
+  },
+
+  toggleChatMode() {
+    this.chatMode = this.chatMode === 'online' ? 'offline' : 'online';
+    this.renderPage();
+  },
+
+  toggleMore() {
+    this.showMore = !this.showMore;
+    this.showStickerPanel = false;
+    this.renderPage();
+  },
+
+  toggleStickerPanel() {
+    this.showStickerPanel = !this.showStickerPanel;
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  sendSticker(idx) {
+    const stickers = D.getStickers();
+    if (!stickers[idx]) return;
+    const msg = {
+      id: U.uid(), type: 'sticker', text: stickers[idx].desc || '[表情]',
+      stickerUrl: stickers[idx].url, imageUrl: stickers[idx].url,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'),
+      ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    this.showStickerPanel = false;
+    this.renderPage();
+  },
+
+  sendPhoto() {
+    const url = prompt('输入图片链接(或留空上传)');
+    if (url) {
+      this._doSendMedia('image', url);
+    } else {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = async () => {
+        if (!input.files[0]) return;
+        try {
+          const uploadedUrl = await SV.upload(input.files[0]);
+          this._doSendMedia('image', uploadedUrl);
+        } catch(e) { this.toast('上传失败'); }
+      };
+      input.click();
+    }
+  },
+
+  sendVideo() {
+    const url = prompt('输入视频链接');
+    if (url) this._doSendMedia('video', url);
+  },
+
+  sendLocation() {
+    const loc = prompt('输入位置名称');
+    if (loc) {
+      const msg = {
+        id: U.uid(), type: 'location', text: loc, location: loc,
+        sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'), ts: U.ts()
+      };
+      D.addMsg(this.chatId, msg);
+      this.renderPage();
+    }
+  },
+
+  _doSendMedia(type, url) {
+    const msg = {
+      id: U.uid(), type, text: type === 'image' ? '' : '[视频]',
+      imageUrl: url,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'), ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    D.addToMediaIndex(type, url);
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  sendRP() {
+    const amount = prompt('红包金额');
+    const wish = prompt('祝福语', '恭喜发财，大吉大利');
+    if (!amount) return;
+    const a = parseFloat(amount);
+    if (isNaN(a) || a <= 0) { this.toast('金额无效'); return; }
+    const balance = D.get('walletBalance') || 0;
+    if (a > balance) { this.toast('余额不足'); return; }
+    D.set('walletBalance', balance - a);
+    const msg = {
+      id: U.uid(), type: 'redpacket', text: `[红包] ${wish}`,
+      rpAmount: a, rpWish: wish || '恭喜发财', opened: false,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'), ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  openRP(msgId) {
+    const history = D.getHistory(this.chatId);
+    const msg = history.find(m => m.id === msgId);
+    if (!msg || msg.type !== 'redpacket') return;
+    if (msg.opened) {
+      this.viewingRP = msg;
+      this.nav('rp-detail');
+      return;
+    }
+    if (msg.senderId === 'player') {
+      this.toast('不能打开自己的红包');
+      return;
+    }
+    msg.opened = true;
+    msg.openedBy = D.get('playerName');
+    D.set('walletBalance', (D.get('walletBalance') || 0) + (msg.rpAmount || 0));
+    D.save();
+    this.toast(`领取了 ¥${(msg.rpAmount||0).toFixed(2)}`);
+    this.renderPage();
+  },
+
+  sendGift() {
+    const name = prompt('礼物名称');
+    if (!name) return;
+    const msg = {
+      id: U.uid(), type: 'gift', text: `[礼物] ${name}`, giftName: name,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'), ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  doPat() {
+    const friend = D.getFriend(this.chatId);
+    const name = friend ? friend.name : '对方';
+    const msg = {
+      id: U.uid(), type: 'pat', text: `${D.get('playerName')} 拍了拍 ${name}`,
+      sender: 'system', senderId: 'system', ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  sendFromBP() {
+    const bp = D.get('backpack') || [];
+    if (bp.length === 0) { this.toast('背包是空的'); return; }
+    const items = bp.map((b, i) => `${i+1}. ${b.emoji||'📦'} ${b.name} ×${b.count||1}`).join('\n');
+    const choice = prompt(`选择要送出的物品序号:\n${items}`);
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (idx < 0 || idx >= bp.length) { this.toast('无效选择'); return; }
+    const item = bp[idx];
+    const msg = {
+      id: U.uid(), type: 'gift', text: `[背包物品] ${item.emoji||'📦'} ${item.name}`,
+      giftName: `${item.emoji||'📦'} ${item.name}`,
+      sender: D.get('playerName'), senderId: 'player', senderName: D.get('playerName'), ts: U.ts()
+    };
+    D.addMsg(this.chatId, msg);
+    if ((item.count || 1) <= 1) D.removeBackpack(idx);
+    else { bp[idx].count = (item.count || 1) - 1; D.set('backpack', bp); }
+    this.showMore = false;
+    this.renderPage();
+  },
+
+  chatMenu() {
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="App.enterSelectMode();App.closeModal()">☑️ 多选消息</button>
+      <button class="btn-primary" style="background:var(--blue)" onclick="App.doSummarizeMemory();App.closeModal()">🧠 总结记忆</button>
+      <button class="btn-primary" style="background:#666" onclick="App.changeChatBg();App.closeModal()">🖼️ 聊天背景</button>
+      <button class="btn-danger" onclick="App.clearHistory('${this.chatId}');App.closeModal()">🗑️ 清空记录</button>
+    </div>`;
+    this.modal('聊天菜单', html, () => {}, '', '关闭');
+  },
+
+  enterSelectMode() { this.selectMode = true; this.selectedMsgs.clear(); this.renderPage(); },
+  exitSelectMode() { this.selectMode = false; this.selectedMsgs.clear(); this.renderPage(); },
+  
+  toggleMsgSel(id) {
+    if (this.selectedMsgs.has(id)) this.selectedMsgs.delete(id);
+    else this.selectedMsgs.add(id);
+    this.renderPage();
+  },
+
+  deleteSelectedMsgs() {
+    if (this.selectedMsgs.size === 0) { this.toast('请先选择消息'); return; }
+    const ids = [...this.selectedMsgs];
+    if (this.chatMode === 'offline') D.delOfflineMsgs(this.chatId, ids);
+    else D.delMsgs(this.chatId, ids);
+    this.exitSelectMode();
+  },
+
+  clearHistory(chatId) {
+    if (!confirm('确定清空所有聊天记录？')) return;
+    D.clearHistory(chatId);
+    this.renderPage();
+  },
+
+  changeChatBg() {
+    const url = prompt('输入背景图片链接(留空清除)');
+    D.setChatBg(this.chatId, url || '');
+    this.renderPage();
+  },
+
+  async doSummarizeMemory() {
+    this.toast('正在总结记忆...');
+    try {
+      const summary = await AI.summarizeMemory(this.chatId);
+      D.setMemorySummary(this.chatId, summary);
+      this.toast('记忆总结完成');
+      alert('记忆摘要:\n\n' + summary);
+    } catch(e) { this.toast('总结失败: ' + e.message); }
+  },
+  // ===== MOMENTS =====
+  pgMoments() {
+    const moments = D.get('moments') || [];
+    const player = D.get('playerName');
+    const playerAvatar = this.getPlayerAvatar();
+    const momentBg = D.get('momentBg') || '';
+    const selMode = this.momentSelMode;
+
+    const headerHtml = `<div class="moment-header">${momentBg ? `<img class="cover" src="${U.esc(momentBg)}">` : ''}<div class="user-info"><span class="name">${U.esc(player)}</span><img src="${U.esc(playerAvatar)}" onerror="this.src='${U.avatarSvg(player)}'"></div></div>`;
+
+    const momentsHtml = moments.slice().reverse().map((m, ri) => {
+      const idx = moments.length - 1 - ri;
+      const authorFriend = D.getFriendByName(m.authorName) || D.getFriend(m.authorId);
+      const avatar = m.isPlayer ? playerAvatar : this.getAvatar(authorFriend || { name: m.authorName });
+      
+      const imagesHtml = (m.images || []).length > 0 ? `<div class="mc-images c${Math.min(m.images.length,9)}">${m.images.map(img => `<img src="${U.esc(img)}" onclick="App.viewImg('${U.esc(img)}')" onerror="this.style.display='none'">`).join('')}</div>` : '';
+
+      const likesHtml = (m.likes || []).length > 0 ? `<div class="mc-likes">❤️ ${m.likes.map(l => U.esc(l)).join('，')}</div>` : '';
+
+      const commentsHtml = (m.comments || []).length > 0 ? `<div class="mc-comments">${m.comments.map(c => `<div class="cmt"><span class="cmt-name">${U.esc(c.name)}</span>${c.replyTo ? ` 回复 <span class="cmt-name">${U.esc(c.replyTo)}</span>` : ''}: ${U.esc(c.text)} ${c.img?`<br><img src="${U.esc(c.img)}" style="max-width:120px;border-radius:4px;margin-top:4px" onclick="App.viewImg('${U.esc(c.img)}')">`:''}</div>`).join('')}</div>` : '';
+
+      const selCheck = selMode ? `<input type="checkbox" ${this.selectedMoments.has(idx)?'checked':''} onchange="App.toggleMomentSel(${idx})" style="margin-right:8px">` : '';
+
+      return `<div class="moment-card"><div class="mc-header">${selCheck}<img src="${U.esc(avatar)}" onerror="this.src='${U.avatarSvg(m.authorName||'?')}'"><div><div class="mc-name">${U.esc(m.authorName || '匿名')}</div></div></div><div class="mc-body"><div class="mc-text">${U.nl2br(m.text || '')}</div>${imagesHtml}${m.location ? `<div class="mc-loc">📍 ${U.esc(m.location)}</div>` : ''}<div class="mc-footer"><span class="mc-time">${U.fmtTime(m.ts)}</span><span class="mc-action" onclick="App.momentAction(${idx})">💬</span></div>${likesHtml}${commentsHtml}</div></div>`;
+    }).join('');
+
+    const selBar = selMode ? `<div style="padding:8px 16px;background:var(--white);display:flex;gap:8px"><button class="btn-outline" onclick="App.momentSelMode=false;App.selectedMoments.clear();App.renderPage()">取消</button><button class="btn-outline" style="border-color:var(--red);color:var(--red)" onclick="App.deleteSelectedMoments()">删除选中</button></div>` : '';
+
+    const actions = `<span onclick="App.momentSelMode=!App.momentSelMode;App.selectedMoments.clear();App.renderPage()">☑️</span><span onclick="App.nav('compose-moment')">📷</span>`;
+
+    return `<div class="page">${this.statusBar()}${this.navbar('朋友圈', true, actions)}<div class="content">${headerHtml}${selBar}${momentsHtml}<div style="text-align:center;padding:20px;color:var(--text3)">— 没有更多了 —</div></div></div>`;
+  },
+
+  toggleMomentSel(idx) {
+    if (this.selectedMoments.has(idx)) this.selectedMoments.delete(idx);
+    else this.selectedMoments.add(idx);
+    this.renderPage();
+  },
+
+  deleteSelectedMoments() {
+    if (this.selectedMoments.size === 0) { this.toast('请先选择'); return; }
+    const moments = D.get('moments') || [];
+    const idxs = [...this.selectedMoments].sort((a,b) => b-a);
+    idxs.forEach(i => moments.splice(i, 1));
+    D.set('moments', moments);
+    this.momentSelMode = false;
+    this.selectedMoments.clear();
+    this.renderPage();
+  },
+
+  momentAction(idx) {
+    const moments = D.get('moments') || [];
+    const m = moments[idx];
+    if (!m) return;
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="App.doMomentLike(${idx});App.closeModal()">❤️ 点赞</button>
+      <div><textarea id="momentComment" placeholder="写评论..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:14px" rows="2"></textarea></div>
+      <button class="btn-primary" onclick="App.doMomentComment(${idx});App.closeModal()">💬 评论</button>
+      <button class="btn-primary" style="background:var(--blue)" onclick="App.aiReactMoment(${idx});App.closeModal()">🤖 AI互动</button>
+    </div>`;
+    this.modal('互动', html, () => {}, '', '关闭');
+  },
+
+  doMomentLike(idx) {
+    const moments = D.get('moments');
+    const m = moments[idx];
+    if (!m.likes) m.likes = [];
+    const name = D.get('playerName');
+    if (!m.likes.includes(name)) m.likes.push(name);
+    D.set('moments', moments);
+    this.renderPage();
+  },
+
+  doMomentComment(idx) {
+    const text = document.getElementById('momentComment')?.value?.trim();
+    if (!text) return;
+    const moments = D.get('moments');
+    const m = moments[idx];
+    if (!m.comments) m.comments = [];
+    m.comments.push({ name: D.get('playerName'), text });
+    D.set('moments', moments);
+    this.renderPage();
+  },
+
+  async aiReactMoment(idx) {
+    this.toast('AI正在互动...');
+    try {
+      const moments = D.get('moments');
+      const m = moments[idx];
+      const friends = D.getFriends();
+      // Random friends react
+      const reactors = friends.sort(() => Math.random() - 0.5).slice(0, Math.min(3, friends.length));
+      
+      for (const f of reactors) {
+        if (!m.likes) m.likes = [];
+        if (Math.random() > 0.4 && !m.likes.includes(f.name)) m.likes.push(f.name);
+        
+        if (Math.random() > 0.3) {
+          const cmt = await AI.momentComments(m, f.name);
+          if (!m.comments) m.comments = [];
+          m.comments.push({ name: f.name, text: cmt.text || '👍' });
+        }
+      }
+      D.set('moments', moments);
+      this.renderPage();
+    } catch(e) { this.toast('AI互动失败: ' + e.message); }
+  },
+
+  // ===== COMPOSE MOMENT =====
+  pgComposeMoment() {
+    return `<div class="page">${this.statusBar()}${this.navbar('发表', true, '<span onclick="App.publishMoment()" style="color:var(--green);font-weight:600;font-size:15px">发表</span>')}<div class="content"><textarea class="compose-area" id="momentText" placeholder="这一刻的想法..." style="width:100%;min-height:120px;border:none;padding:16px;font-size:16px;outline:none;resize:none"></textarea><div class="compose-imgs" id="momentImgs"><div class="add-img" onclick="App.addMomentImg()">+</div></div><div class="form-group"><label>图片链接</label><input id="momentImgUrl" placeholder="粘贴图片链接后点+添加"></div><div class="form-group"><label>📍 定位</label><input id="momentLoc" placeholder="你在哪里"></div></div></div>`;
+  },
+
+  addMomentImg() {
+    const url = document.getElementById('momentImgUrl')?.value?.trim();
+    if (!url) {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = async () => {
+        if (!input.files[0]) return;
+        try {
+          const uploadedUrl = await SV.upload(input.files[0]);
+          this._addMomentImgEl(uploadedUrl);
+        } catch(e) { this.toast('上传失败'); }
+      };
+      input.click();
+      return;
+    }
+    this._addMomentImgEl(url);
+    document.getElementById('momentImgUrl').value = '';
+  },
+
+  _addMomentImgEl(url) {
+    const container = document.getElementById('momentImgs');
+    const addBtn = container.querySelector('.add-img');
+    const div = document.createElement('div');
+    div.className = 'img-item';
+    div.innerHTML = `<img src="${U.esc(url)}" data-url="${U.esc(url)}">`;
+    div.onclick = () => div.remove();
+    container.insertBefore(div, addBtn);
+  },
+
+  async publishMoment() {
+    const text = document.getElementById('momentText')?.value?.trim();
+    const loc = document.getElementById('momentLoc')?.value?.trim();
+    const imgEls = document.querySelectorAll('#momentImgs .img-item img');
+    const images = [...imgEls].map(el => el.dataset.url).filter(Boolean);
+
+    if (!text && images.length === 0) { this.toast('请输入内容'); return; }
+
+    const moments = D.get('moments') || [];
+    const moment = {
+      id: U.uid(),
+      authorId: 'player',
+      authorName: D.get('playerName'),
+      isPlayer: true,
+      text: text || '',
+      images,
+      location: loc || '',
+      likes: [],
+      comments: [],
+      ts: U.ts()
+    };
+    moments.push(moment);
+    D.set('moments', moments);
+    this.toast('已发表');
+
+    // Auto AI reactions
+    this.aiReactMoment(moments.length - 1);
+    this.goBack();
+  },
+
+  // ===== PROFILE =====
+  viewContactProfile(id) {
+    if (!id || id === 'player' || id === 'system') return;
+    this.viewingProfile = id;
+    this.nav('profile');
+  },
+
+  pgProfile() {
+    const friend = D.getFriend(this.viewingProfile);
+    if (!friend) return `<div class="page">${this.navbar('详细资料')}<div class="content"><div style="text-align:center;padding:40px;color:var(--text3)">找不到该联系人</div></div></div>`;
+
+    return `<div class="page">${this.statusBar()}${this.navbar('详细资料')}<div class="content"><div class="profile-card"><img src="${U.esc(this.getAvatar(friend))}" onerror="this.src='${U.avatarSvg(friend.name)}'"><div class="name">${U.esc(friend.name)}</div><div class="sig">${U.esc(friend.signature || friend.id)}</div>${friend.persona ? `<div class="persona">${U.nl2br(friend.persona)}</div>` : ''}</div><div class="section"><button class="btn-primary" style="margin:16px" onclick="App.openChat('${friend.id}',false)">发消息</button><button class="btn-outline" style="margin:0 16px;width:calc(100% - 32px)" onclick="App.editingProfile='${friend.id}';App.nav('edit-profile')">✏️ 编辑资料</button><button class="btn-danger" style="margin:16px" onclick="App.doDeleteFriend('${friend.id}')">删除好友</button></div></div></div>`;
+  },
+
+  doDeleteFriend(id) {
+    if (!confirm('确定删除该好友？')) return;
+    D.removeFriend(id);
+    this.toast('已删除');
+    this.goBack();
+  },
+
+  // ===== EDIT PROFILE =====
+  pgEditProfile() {
+    const friend = D.getFriend(this.editingProfile || this.viewingProfile);
+    if (!friend) return this.pgProfile();
+
+    return `<div class="page">${this.statusBar()}${this.navbar('编辑资料', true, '<span onclick="App.saveEditProfile()" style="color:var(--green);font-size:15px">保存</span>')}<div class="content"><div class="form-group"><label>昵称</label><input id="epName" value="${U.esc(friend.name)}"></div><div class="form-group"><label>头像链接</label><input id="epAvatar" value="${U.esc(friend.avatar||'')}"></div><div class="form-group"><label>签名</label><input id="epSig" value="${U.esc(friend.signature||'')}"></div><div class="form-group"><label>人设</label><textarea id="epPersona" rows="6">${U.esc(friend.persona||'')}</textarea></div><div class="form-group"><label>聊天风格</label><input id="epStyle" value="${U.esc(friend.style||'')}"></div></div></div>`;
+  },
+
+  saveEditProfile() {
+    const id = this.editingProfile || this.viewingProfile;
+    D.updateFriend(id, {
+      name: document.getElementById('epName')?.value?.trim() || '',
+      avatar: document.getElementById('epAvatar')?.value?.trim() || '',
+      signature: document.getElementById('epSig')?.value?.trim() || '',
+      persona: document.getElementById('epPersona')?.value || '',
+      style: document.getElementById('epStyle')?.value?.trim() || ''
+    });
+    this.toast('已保存');
+    this.goBack();
+  },
+  // ===== WALLET =====
+  pgWallet() {
+    const balance = D.get('walletBalance') || 0;
+    return `<div class="page">${this.statusBar()}${this.navbar('钱包')}<div class="content"><div class="wallet-card"><div class="label">余额</div><div class="amount">¥${balance.toFixed(2)}</div></div><button class="btn-primary" style="margin:0 16px;width:calc(100% - 32px)" onclick="App.walletRecharge()">💰 充值</button></div></div>`;
+  },
+
+  walletRecharge() {
+    const amount = prompt('充值金额');
+    if (!amount) return;
+    const a = parseFloat(amount);
+    if (isNaN(a) || a <= 0) { this.toast('金额无效'); return; }
+    D.set('walletBalance', (D.get('walletBalance') || 0) + a);
+    this.toast(`充值 ¥${a.toFixed(2)} 成功`);
+    this.renderPage();
+  },
+
+  // ===== BACKPACK =====
+  pgBackpack() {
+    const bp = D.get('backpack') || [];
+    const itemsHtml = bp.length > 0 ? bp.map((b, i) => `<div class="bp-item" onclick="App.useBackpackItem(${i})"><div class="emoji">${b.emoji || b.icon || '📦'}</div><div class="name">${U.esc(b.name)}</div><div class="count">×${b.count || 1}</div></div>`).join('') : '<div style="grid-column:span 3;text-align:center;padding:40px;color:var(--text3)">背包是空的</div>';
+    return `<div class="page">${this.statusBar()}${this.navbar('背包')}<div class="content"><div class="bp-grid">${itemsHtml}</div></div></div>`;
+  },
+
+  useBackpackItem(idx) {
+    const bp = D.get('backpack');
+    if (!bp[idx]) return;
+    this.toast(`使用了 ${bp[idx].name}`);
+  },
+
+  // ===== STICKERS =====
+  pgStickers() {
+    const stickers = D.getStickers();
+    const grid = stickers.map((s, i) => `<div class="stk-item" onclick="App.removeStickerDialog(${i})"><img src="${U.esc(s.url)}" onerror="this.src='${U.avatarSvg('?')}'"><div class="desc">${U.esc(s.desc || '')}</div></div>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('表情包')}<div class="content"><div style="padding:12px;display:flex;gap:8px"><button class="btn-primary" onclick="App.addStickerDialog()">+ 添加表情</button><button class="btn-primary" style="background:var(--blue)" onclick="App.batchImportStickers()">📥 批量导入</button></div><div class="stk-grid">${grid}</div></div></div>`;
+  },
+
+  addStickerDialog() {
+    const html = `<div class="form-group"><label>图片链接</label><input id="stkUrl" placeholder="图片URL"></div><div class="form-group"><label>描述</label><input id="stkDesc" placeholder="表情描述"></div>`;
+    this.modal('添加表情', html, () => {
+      const url = document.getElementById('stkUrl')?.value?.trim();
+      const desc = document.getElementById('stkDesc')?.value?.trim();
+      if (!url) { App.toast('请输入链接'); return; }
+      D.addSticker({ url, desc: desc || '' });
+      App.renderPage();
+    });
+  },
+
+  removeStickerDialog(idx) {
+    if (confirm('删除这个表情？')) {
+      D.removeSticker(idx);
+      this.renderPage();
+    }
+  },
+
+  batchImportStickers() {
+    const text = prompt('批量导入(每行一个链接，或 链接|描述 格式)');
+    if (!text) return;
+    const lines = text.split('\n').filter(l => l.trim());
+    const newStickers = lines.map(l => {
+      const parts = l.split('|');
+      return { url: parts[0].trim(), desc: (parts[1] || '').trim() };
+    });
+    D.addStickers(newStickers);
+    this.toast(`导入了 ${newStickers.length} 个表情`);
+    this.renderPage();
+  },
+
+  // ===== WORLD BOOK =====
+  pgWorldBook() {
+    const wbs = D.getWorldBooks();
+    const list = wbs.map((w, i) => {
+      const typeLabel = w.type === 'global' ? '🌐 全局' : `👤 角色: ${(w.targets||[]).map(t => { const f = D.getFriend(t); return f?f.name:t; }).join(',')}`;
+      return `<div class="wb-card" onclick="App.editWB(${i})"><div class="wb-name">${U.esc(w.name)}</div><div class="wb-meta">${typeLabel}</div><div class="wb-preview">${U.esc(U.truncate(w.content||'',80))}</div></div>`;
+    }).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('世界书')}<div class="content"><div style="padding:12px;display:flex;gap:8px"><button class="btn-primary" onclick="App.addWB('global')">+ 全局世界书</button><button class="btn-primary" style="background:var(--blue)" onclick="App.addWB('character')">+ 角色世界书</button></div>${list}</div></div>`;
+  },
+
+  addWB(type) {
+    this.editingWB = { name: '', type, content: '', targets: [], isNew: true };
+    this.nav('wb-edit');
+  },
+
+  editWB(idx) {
+    const wbs = D.getWorldBooks();
+    this.editingWB = { ...wbs[idx], idx, isNew: false };
+    this.nav('wb-edit');
+  },
+
+  pgWBEdit() {
+    const wb = this.editingWB;
+    if (!wb) return this.pgWorldBook();
+    const friends = D.getFriends();
+    const targetChecks = wb.type === 'character' ? friends.map(f => `<label style="display:flex;align-items:center;gap:6px;padding:4px 0"><input type="checkbox" class="wbTarget" value="${f.id}" ${(wb.targets||[]).includes(f.id)?'checked':''}> ${U.esc(f.name)}</label>`).join('') : '';
+
+    return `<div class="page">${this.statusBar()}${this.navbar(wb.isNew?'新建世界书':'编辑世界书', true, '<span onclick="App.saveWB()" style="color:var(--green);font-size:15px">保存</span>')}<div class="content"><div class="form-group"><label>名称</label><input id="wbName" value="${U.esc(wb.name)}"></div><div class="form-group"><label>类型</label><select id="wbType" onchange="App.editingWB.type=this.value;App.renderPage()"><option value="global" ${wb.type==='global'?'selected':''}>全局</option><option value="character" ${wb.type==='character'?'selected':''}>角色</option></select></div>${wb.type==='character'?`<div class="form-group"><label>挂载角色</label>${targetChecks}</div>`:''}<div class="form-group"><label>内容</label><textarea id="wbContent" rows="10">${U.esc(wb.content||'')}</textarea></div>${!wb.isNew?`<button class="btn-danger" style="margin:16px" onclick="App.deleteWB(${wb.idx})">删除</button>`:''}</div></div>`;
+  },
+
+  saveWB() {
+    const wb = this.editingWB;
+    const wbs = D.getWorldBooks();
+    const data = {
+      name: document.getElementById('wbName')?.value?.trim() || '未命名',
+      type: document.getElementById('wbType')?.value || 'global',
+      content: document.getElementById('wbContent')?.value || '',
+      targets: [...document.querySelectorAll('.wbTarget:checked')].map(el => el.value)
+    };
+    if (wb.isNew) { wbs.push(data); }
+    else { Object.assign(wbs[wb.idx], data); }
+    D.set('worldBooks', wbs);
+    this.toast('已保存');
+    this.goBack();
+  },
+
+  deleteWB(idx) {
+    if (!confirm('确定删除？')) return;
+    const wbs = D.getWorldBooks();
+    wbs.splice(idx, 1);
+    D.set('worldBooks', wbs);
+    this.goBack();
+  },
+  // ===== PERSONA =====
+  pgPersona() {
+    return `<div class="page">${this.statusBar()}${this.navbar('个人设置', true, '<span onclick="App.savePersona()" style="color:var(--green);font-size:15px">保存</span>')}<div class="content"><div class="form-group"><label>昵称</label><input id="pName" value="${U.esc(D.get('playerName'))}"></div><div class="form-group"><label>头像链接</label><input id="pAvatar" value="${U.esc(D.get('playerAvatar')||'')}"></div><div class="form-group"><label>微信号</label><input id="pId" value="${U.esc(D.get('playerId'))}"></div><div class="form-group"><label>个性签名</label><input id="pSig" value="${U.esc(D.get('playerSignature')||'')}"></div><div class="form-group"><label>人设</label><textarea id="pPersona" rows="6">${U.esc(D.get('playerPersona')||'')}</textarea></div><div class="form-group"><label>聊天背景图链接</label><input id="pChatBg" value="${U.esc(D.get('chatBg')||'')}"></div><div class="form-group"><label>朋友圈封面图链接</label><input id="pMomentBg" value="${U.esc(D.get('momentBg')||'')}"></div></div></div>`;
+  },
+
+  savePersona() {
+    D.set('playerName', document.getElementById('pName')?.value?.trim() || '我');
+    D.set('playerAvatar', document.getElementById('pAvatar')?.value?.trim() || '');
+    D.set('playerId', document.getElementById('pId')?.value?.trim() || 'wxid_player');
+    D.set('playerSignature', document.getElementById('pSig')?.value?.trim() || '');
+    D.set('playerPersona', document.getElementById('pPersona')?.value || '');
+    D.set('chatBg', document.getElementById('pChatBg')?.value?.trim() || '');
+    D.set('momentBg', document.getElementById('pMomentBg')?.value?.trim() || '');
+    this.toast('已保存');
+    this.goBack();
+  },
+
+  // ===== SETTINGS =====
+  pgSettings() {
+    const models = D.get('availableModels') || [];
+    const modelOpts = models.map(m => `<option value="${U.esc(m)}" ${m===D.get('modelId')?'selected':''}>${U.esc(m)}</option>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('API设置')}<div class="content"><div class="section-title">═══ API配置 ═══</div><div class="form-group"><label>API地址</label><input id="sEndpoint" value="${U.esc(D.get('apiEndpoint'))}" placeholder="https://api.openai.com"></div><div class="form-group"><label>API Key</label><input id="sKey" type="password" value="${U.esc(D.get('apiKey'))}"></div><div class="form-group"><label>选择模型</label><div style="display:flex;gap:8px"><select id="sModel" style="flex:1">${modelOpts}<option value="">手动输入</option></select><button class="btn-outline" onclick="App.fetchModels()">拉取</button></div></div><div class="form-group"><label>模型ID (手动)</label><input id="sModelId" value="${U.esc(D.get('modelId'))}"></div><div class="section-title">═══ 参数 ═══</div><div class="form-group"><label>最大Token</label><input id="sMaxTk" type="number" value="${D.get('maxTokens')}"></div><div class="form-group"><label>Temperature</label><input id="sTemp" type="number" step="0.1" value="${D.get('temperature')}"></div><div style="padding:12px;display:flex;gap:8px"><button class="btn-primary" onclick="App.saveSettings()">💾 保存</button><button class="btn-primary" style="background:var(--blue)" onclick="App.testAPI()">🔗 测试</button></div><div class="section-title">═══ 数据管理 ═══</div><div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn-outline" onclick="App.exportData()">📤 导出</button><button class="btn-outline" onclick="App.doImport()">📥 导入</button><button class="btn-outline" style="border-color:var(--red);color:var(--red)" onclick="App.resetData()">🗑 重置</button></div></div></div>`;
+  },
+
+  async fetchModels() {
+    try {
+      // Save current endpoint/key first
+      D.set('apiEndpoint', document.getElementById('sEndpoint')?.value?.trim());
+      D.set('apiKey', document.getElementById('sKey')?.value?.trim());
+      const models = await AI.fetchModels();
+      D.set('availableModels', models);
+      this.toast(`获取到 ${models.length} 个模型`);
+      this.renderPage();
+    } catch(e) { this.toast('拉取失败: ' + e.message); }
+  },
+
+  saveSettings() {
+    D.set('apiEndpoint', document.getElementById('sEndpoint')?.value?.trim());
+    D.set('apiKey', document.getElementById('sKey')?.value?.trim());
+    const selModel = document.getElementById('sModel')?.value;
+    const manualModel = document.getElementById('sModelId')?.value?.trim();
+    D.set('modelId', manualModel || selModel || '');
+    D.set('maxTokens', parseInt(document.getElementById('sMaxTk')?.value) || 4096);
+    D.set('temperature', parseFloat(document.getElementById('sTemp')?.value) || 0.8);
+    D.forceSave();
+    this.toast('已保存');
+  },
+
+  async testAPI() {
+    this.saveSettings();
+    try {
+      const result = await AI.gen('你好，请回复"连接成功"', [{ role: 'user', content: '测试' }], { maxTokens: 50 });
+      this.toast('✅ ' + result.slice(0, 50));
+    } catch(e) { this.toast('❌ ' + e.message); }
+  },
+
+  exportData() {
+    const data = JSON.stringify(D.data, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `wechatsim_backup_${U.fmtDate(Date.now())}.json`;
+    a.click();
+    this.toast('已导出');
+  },
+
+  doImport() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.onchange = async () => {
+      if (!input.files[0]) return;
+      try {
+        const text = await input.files[0].text();
+        const data = JSON.parse(text);
+        D.data = { ...D.defaults, ...data };
+        await D.forceSave();
+        this.toast('导入成功');
+        this.renderPage();
+      } catch(e) { this.toast('导入失败: ' + e.message); }
+    };
+    input.click();
+  },
+
+  resetData() {
+    if (!confirm('确定重置所有数据？此操作不可恢复！')) return;
+    if (!confirm('再次确认：真的要删除所有数据吗？')) return;
+    D.data = JSON.parse(JSON.stringify(D.defaults));
+    D.forceSave();
+    this.toast('已重置');
+    this.switchTab('chat-list');
+  },
+
+  // ===== MEDIA LIBS =====
+  pgMediaLibs() {
+    const libs = D.getMediaLibs();
+    const listHtml = libs.map(lib => {
+      const count = (lib.items || []).length;
+      return `<div class="media-card" onclick="App.editMediaLib('${lib.id}')"><div class="info"><div class="name">${U.esc(lib.name)}</div><div class="meta">${lib.type||'image'} · ${lib.scope||'global'} · ${count}项</div></div><div class="arrow">›</div></div>`;
+    }).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('媒体库')}<div class="content"><div style="padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn-outline" onclick="App.addMediaLib('image','global')">+ 全局图片库</button><button class="btn-outline" onclick="App.addMediaLib('video','global')">+ 全局视频库</button><button class="btn-outline" onclick="App.addMediaLib('image','local')">+ 局部图片库</button><button class="btn-outline" onclick="App.addMediaLib('video','local')">+ 局部视频库</button></div>${listHtml}</div></div>`;
+  },
+
+  addMediaLib(type, scope) {
+    const name = prompt('媒体库名称');
+    if (!name) return;
+    const libs = D.getMediaLibs();
+    libs.push({ id: U.uid(), name, type, scope, items: [] });
+    D.set('mediaLibraries', libs);
+    this.renderPage();
+  },
+
+  editMediaLib(id) {
+    this.editingMediaLib = id;
+    this.nav('media-lib-edit');
+  },
+
+  pgMediaLibEdit() {
+    const lib = D.getMediaLib(this.editingMediaLib);
+    if (!lib) return `<div class="page">${this.navbar('编辑')}<div class="content"><p style="padding:20px">未找到媒体库</p></div></div>`;
+
+    const itemsHtml = (lib.items || []).map((item, i) => `<div class="media-card"><img class="thumb" src="${U.esc(item.url)}" onerror="this.src='${U.avatarSvg('?')}'"><div class="info"><div class="name">${U.esc(item.desc || item.name || '未命名')}</div><div class="meta">${U.truncate(item.url||'',40)}</div></div><span style="color:var(--red);cursor:pointer;padding:8px" onclick="App.removeMediaItem('${lib.id}',${i})">✕</span></div>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('编辑媒体库', true, '<span onclick="App.saveMediaLib()" style="color:var(--green);font-size:15px">保存</span>')}<div class="content"><div class="form-group"><label>名称</label><input id="mlName" value="${U.esc(lib.name)}"></div><div class="form-group"><label>批量添加(每行: 链接 或 链接|描述)</label><textarea id="mlBatch" rows="3" placeholder="https://example.com/1.jpg|描述\nhttps://example.com/2.jpg"></textarea></div><button class="btn-primary" style="margin:8px 16px" onclick="App.addMediaLibItems('${lib.id}')">+ 批量添加</button><div class="form-group"><label>单独添加</label><div style="display:flex;gap:8px"><input id="mlSingleUrl" placeholder="链接" style="flex:1"><input id="mlSingleDesc" placeholder="描述" style="flex:1"></div></div><button class="btn-outline" style="margin:8px 16px" onclick="App.addSingleMediaItem('${lib.id}')">添加</button>${itemsHtml}<button class="btn-danger" style="margin:16px" onclick="App.deleteMediaLib('${lib.id}')">删除媒体库</button></div></div>`;
+  },
+
+  addMediaLibItems(id) {
+    const text = document.getElementById('mlBatch')?.value;
+    if (!text) return;
+    const libs = D.getMediaLibs();
+    const lib = libs.find(l => l.id === id);
+    if (!lib) return;
+    text.split('\n').filter(l => l.trim()).forEach(line => {
+      const parts = line.split('|');
+      lib.items.push({ url: parts[0].trim(), desc: (parts[1] || '').trim(), id: U.uid() });
+    });
+    D.set('mediaLibraries', libs);
+    document.getElementById('mlBatch').value = '';
+    this.renderPage();
+  },
+
+  addSingleMediaItem(id) {
+    const url = document.getElementById('mlSingleUrl')?.value?.trim();
+    const desc = document.getElementById('mlSingleDesc')?.value?.trim();
+    if (!url) return;
+    const libs = D.getMediaLibs();
+    const lib = libs.find(l => l.id === id);
+    if (!lib) return;
+    lib.items.push({ url, desc: desc || '', id: U.uid() });
+    D.set('mediaLibraries', libs);
+    document.getElementById('mlSingleUrl').value = '';
+    document.getElementById('mlSingleDesc').value = '';
+    this.renderPage();
+  },
+
+  removeMediaItem(libId, idx) {
+    const libs = D.getMediaLibs();
+    const lib = libs.find(l => l.id === libId);
+    if (lib) { lib.items.splice(idx, 1); D.set('mediaLibraries', libs); this.renderPage(); }
+  },
+
+  saveMediaLib() {
+    const libs = D.getMediaLibs();
+    const lib = libs.find(l => l.id === this.editingMediaLib);
+    if (lib) {
+      lib.name = document.getElementById('mlName')?.value?.trim() || lib.name;
+      D.set('mediaLibraries', libs);
+    }
+    this.toast('已保存');
+    this.goBack();
+  },
+
+  deleteMediaLib(id) {
+    if (!confirm('确定删除？')) return;
+    D.set('mediaLibraries', D.getMediaLibs().filter(l => l.id !== id));
+    this.goBack();
+  },
+
+  // ===== OA LIST =====
+  pgOAList() {
+    const followed = D.get('followedOA') || [];
+    const listHtml = followed.map(oa => `<div class="oa-item" onclick="App.openOA('${U.esc(oa.name)}')"><div class="oa-icon">${oa.emoji || '📰'}</div><div class="oa-info"><div class="name">${U.esc(oa.name)}</div><div class="desc">${U.esc(oa.desc || '')}</div></div></div>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('公众号')}<div class="content"><div class="search-bar" style="display:flex;gap:8px"><input id="oaSearch" placeholder="搜索公众号" style="flex:1"><button class="btn-outline" onclick="App.searchOA()">搜索</button></div>${listHtml}<div id="oaResults"></div></div></div>`;
+  },
+
+  async searchOA() {
+    const q = document.getElementById('oaSearch')?.value?.trim();
+    if (!q) return;
+    this.toast('搜索中...');
+    try {
+      const results = await AI.searchOA(q);
+      const followed = D.get('followedOA') || [];
+      const followedNames = followed.map(o => o.name);
+      const html = results.map(r => `<div class="oa-item"><div class="oa-icon">${r.emoji||'📰'}</div><div class="oa-info"><div class="name">${U.esc(r.name)}</div><div class="desc">${U.esc(r.desc||'')}</div></div>${followedNames.includes(r.name)?'<span style="color:var(--text3)">已关注</span>':`<button class="btn-outline" onclick="App.followOA(${JSON.stringify(r).replace(/"/g,'&quot;')})">+关注</button>`}</div>`).join('');
+      document.getElementById('oaResults').innerHTML = html;
+    } catch(e) { this.toast('搜索失败: ' + e.message); }
+  },
+
+  followOA(oa) {
+    const followed = D.get('followedOA') || [];
+    if (followed.find(o => o.name === oa.name)) { this.toast('已关注'); return; }
+    followed.push({ ...oa, articles: [] });
+    D.set('followedOA', followed);
+    this.toast('已关注');
+    this.renderPage();
+  },
+
+  openOA(name) {
+    this.viewingOA = name;
+    this.nav('oa-detail');
+  },
+
+  pgOADetail() {
+    const followed = D.get('followedOA') || [];
+    const oa = followed.find(o => o.name === this.viewingOA);
+    if (!oa) return `<div class="page">${this.navbar('公众号')}<div class="content"><p style="padding:20px">未找到</p></div></div>`;
+
+    const articlesHtml = (oa.articles || []).map((a, i) => `<div class="section-item" onclick="App.readArticle('${U.esc(this.viewingOA)}',${i})"><div class="left" style="flex-direction:column;align-items:flex-start"><div style="font-weight:600">${U.esc(a.title)}</div><div style="font-size:12px;color:var(--text3);margin-top:4px">${U.esc(a.summary||'')}</div></div></div>`).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar(oa.name, true, '<span onclick="App.pushArticles()" style="font-size:14px">推送</span>')}<div class="content">${articlesHtml || '<div style="text-align:center;padding:40px;color:var(--text3)">暂无文章，点击右上角推送</div>'}</div></div>`;
+  },
+
+  async pushArticles() {
+    this.toast('AI生成文章中...');
+    try {
+      const articles = await AI.genArticles(this.viewingOA);
+      const followed = D.get('followedOA');
+      const oa = followed.find(o => o.name === this.viewingOA);
+      if (oa) {
+        if (!oa.articles) oa.articles = [];
+        oa.articles.push(...articles.map(a => ({ ...a, ts: U.ts() })));
+        D.set('followedOA', followed);
+      }
+      this.toast(`推送了 ${articles.length} 篇文章`);
+      this.renderPage();
+    } catch(e) { this.toast('推送失败: ' + e.message); }
+  },
+
+  readArticle(oaName, idx) {
+    this.viewingArticle = { oaName, idx };
+    this.nav('article');
+  },
+
+  pgArticle() {
+    const { oaName, idx } = this.viewingArticle || {};
+    const followed = D.get('followedOA') || [];
+    const oa = followed.find(o => o.name === oaName);
+    const article = oa?.articles?.[idx];
+    if (!article) return `<div class="page">${this.navbar('文章')}<div class="content"><p style="padding:20px">文章不存在</p></div></div>`;
+
+    return `<div class="page">${this.statusBar()}${this.navbar('文章')}<div class="content"><div class="article-view"><h1>${U.esc(article.title)}</h1><div class="meta">${U.esc(oaName)} · ${U.fmtTime(article.ts)}</div><div class="body">${U.nl2br(article.content||'')}</div></div></div></div>`;
+  },
+
+  // ===== SHOP =====
+  pgShop() {
+    const cart = D.get('shoppingCart') || [];
+    const totalPrice = cart.reduce((s, c) => s + (c.price || 0), 0);
+    
+    return `<div class="page">${this.statusBar()}${this.navbar('购物')}<div class="content"><div class="search-bar" style="display:flex;gap:8px"><input id="shopSearch" placeholder="搜索商品" style="flex:1"><button class="btn-outline" onclick="App.searchShop()">搜索</button></div><div class="shop-grid" id="shopItems"><div style="grid-column:span 2;text-align:center;padding:40px;color:var(--text3)">搜索或点击搜索按钮浏览商品</div></div></div>${cart.length>0?`<div class="shop-bar"><span>🛒 (${cart.length}) ¥${totalPrice.toFixed(2)}</span><button class="btn-primary" style="width:auto;padding:8px 20px" onclick="App.checkout()">结算(${cart.length})</button></div>`:''}</div>`;
+  },
+
+  async searchShop() {
+    const q = document.getElementById('shopSearch')?.value?.trim() || '';
+    this.toast('搜索中...');
+    try {
+      const items = await AI.genShopItems(q);
+      const html = items.map(item => `<div class="shop-item" onclick="App.addCart(${JSON.stringify(item).replace(/"/g,'&quot;')})"><div class="emoji">${item.emoji||'📦'}</div><div class="info"><div class="name">${U.esc(item.name)}</div><div class="price">¥${(item.price||0).toFixed(2)}</div></div></div>`).join('');
+      document.getElementById('shopItems').innerHTML = html;
+    } catch(e) { this.toast('搜索失败: ' + e.message); }
+  },
+
+  addCart(item) {
+    const cart = D.get('shoppingCart') || [];
+    cart.push(item);
+    D.set('shoppingCart', cart);
+    this.toast(`已加入购物车: ${item.name}`);
+    this.renderPage();
+  },
+
+  checkout() {
+    const cart = D.get('shoppingCart') || [];
+    const total = cart.reduce((s, c) => s + (c.price || 0), 0);
+    const balance = D.get('walletBalance') || 0;
+    if (total > balance) { this.toast('余额不足'); return; }
+    if (!confirm(`确认支付 ¥${total.toFixed(2)}？`)) return;
+    D.set('walletBalance', balance - total);
+    // Add to backpack
+    cart.forEach(item => {
+      D.addBackpack({ name: item.name, emoji: item.emoji || '📦', count: 1 });
+    });
+    D.set('shoppingCart', []);
+    this.toast('购买成功！');
+    this.renderPage();
+  },
+
+  // ===== FORUM =====
+  pgForum() {
+    const posts = D.get('forumCache') || [];
+    const postsHtml = posts.map((p, i) => {
+      const avatar = U.avatarSvg(p.author || '匿');
+      return `<div class="forum-card" onclick="App.openForumPost(${i})"><div class="fc-header"><img src="${avatar}" style="width:32px;height:32px;border-radius:50%"><div><div style="font-weight:500">${U.esc(p.author||'匿名')}</div><div style="font-size:11px;color:var(--text3)">${U.fmtTime(p.ts)}</div></div></div><div class="fc-title">${U.esc(p.title||'')}</div><div class="fc-content">${U.esc(U.truncate(p.content||'',80))}</div><div class="fc-stats"><span>👍 ${p.likes||0}</span><span>💬 ${(p.replies||[]).length}</span></div></div>`;
+    }).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('论坛', true, '<span onclick="App.refreshForum()">🔄</span>')}<div class="content"><div class="search-bar" style="display:flex;gap:8px"><input id="forumSearch" placeholder="搜索话题" style="flex:1"><button class="btn-outline" onclick="App.searchForum()">搜索</button></div>${postsHtml || '<div style="text-align:center;padding:40px;color:var(--text3)">暂无帖子，点击右上角刷新</div>'}</div></div>`;
+  },
+
+  async refreshForum() {
+    this.toast('AI生成帖子...');
+    try {
+      const posts = await AI.genForumPosts('');
+      const existing = D.get('forumCache') || [];
+      const newPosts = posts.map(p => ({ ...p, ts: U.ts(), replies: p.replies || [] }));
+      D.set('forumCache', [...newPosts, ...existing].slice(0, 50));
+      this.renderPage();
+    } catch(e) { this.toast('刷新失败: ' + e.message); }
+  },
+
+  async searchForum() {
+    const q = document.getElementById('forumSearch')?.value?.trim();
+    if (!q) return;
+    this.toast('搜索中...');
+    try {
+      const posts = await AI.genForumPosts(q);
+      D.set('forumCache', posts.map(p => ({ ...p, ts: U.ts(), replies: p.replies || [] })));
+      this.renderPage();
+    } catch(e) { this.toast('搜索失败: ' + e.message); }
+  },
+
+  openForumPost(idx) {
+    this.viewingPost = idx;
+    this.nav('forum-detail');
+  },
+
+  pgForumDetail() {
+    const posts = D.get('forumCache') || [];
+    const post = posts[this.viewingPost];
+    if (!post) return `<div class="page">${this.navbar('帖子')}<div class="content"><p style="padding:20px">帖子不存在</p></div></div>`;
+
+    const repliesHtml = (post.replies || []).map(r => {
+      const avatar = U.avatarSvg(r.author || '匿');
+      return `<div style="display:flex;gap:8px;padding:12px 0;border-bottom:1px solid var(--border)"><img src="${avatar}" style="width:28px;height:28px;border-radius:50%"><div><div style="font-weight:500;font-size:14px">${U.esc(r.author||'匿名')} <span style="font-size:11px;color:var(--text3)">${U.fmtTime(r.ts)}</span></div><div style="font-size:14px;margin-top:4px">${U.nl2br(r.content||'')}</div></div></div>`;
+    }).join('');
+
+    return `<div class="page">${this.statusBar()}${this.navbar('帖子', true, '<span onclick="App.replyForumPost()" style="font-size:14px">回复</span>')}<div class="content" style="padding:16px"><h2 style="font-size:20px;margin-bottom:8px">${U.esc(post.title||'')}</h2><div style="font-size:12px;color:var(--text3);margin-bottom:12px">${U.esc(post.author||'匿名')} · ${U.fmtTime(post.ts)} · 👍${post.likes||0}</div><div style="font-size:15px;line-height:1.7;margin-bottom:20px">${U.nl2br(post.content||'')}</div><div style="font-size:14px;font-weight:600;padding:8px 0;border-top:2px solid var(--border)">回复 (${(post.replies||[]).length})</div>${repliesHtml}</div></div>`;
+  },
+
+  replyForumPost() {
+    const text = prompt('输入回复内容');
+    if (!text) return;
+    const posts = D.get('forumCache');
+    const post = posts[this.viewingPost];
+    if (!post.replies) post.replies = [];
+    post.replies.push({ author: D.get('playerName'), content: text, ts: U.ts() });
+    D.set('forumCache', posts);
+    this.renderPage();
+  },
+
+  // ===== RP DETAIL =====
+  pgRPDetail() {
+    const msg = this.viewingRP;
+    if (!msg) return `<div class="page">${this.navbar('红包详情')}<div class="content"><p style="padding:20px">红包不存在</p></div></div>`;
+
+    return `<div class="page">${this.statusBar()}${this.navbar('红包详情')}<div class="content"><div class="rp-detail"><div class="rp-icon">🧧</div><div class="rp-from">${U.esc(msg.senderName||'')}</div><div class="rp-wish">${U.esc(msg.rpWish||'恭喜发财')}</div><div class="rp-amount">¥${(msg.rpAmount||0).toFixed(2)}</div>${msg.opened?`<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)"><span>${U.esc(msg.openedBy||'')} 已领取 ¥${(msg.rpAmount||0).toFixed(2)}</span></div>`:''}</div></div></div>`;
+  },
+  // ===== ADD FRIEND =====
+  showAddMenu() {
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="App.showAddFriend();App.closeModal()">👤 添加好友</button>
+      <button class="btn-primary" style="background:var(--blue)" onclick="App.showCreateGroup();App.closeModal()">👥 创建群聊</button>
+    </div>`;
+    this.modal('添加', html, () => {}, '', '关闭');
+  },
+
+  showAddFriend() {
+    const html = `<div class="form-group"><label>好友昵称</label><input id="addFriendName" placeholder="输入昵称(AI将自动生成人设)"></div>`;
+    this.modal('添加好友', html, async () => {
+      const name = document.getElementById('addFriendName')?.value?.trim();
+      if (!name) { App.toast('请输入昵称'); return; }
+      App.toast('AI正在生成角色...');
+      try {
+        const info = await AI.generateFriendInfo(name);
+        const friend = {
+          id: U.uid(),
+          name: info.name || name,
+          avatar: info.avatar || '',
+          persona: info.persona || '',
+          signature: info.signature || '',
+          style: info.style || ''
+        };
+        D.addFriend(friend);
+        App.toast(`已添加好友: ${friend.name}`);
+        App.renderPage();
+      } catch(e) {
+        // Fallback: add without AI
+        D.addFriend({ id: U.uid(), name, avatar: '', persona: '', signature: '', style: '' });
+        App.toast(`已添加好友: ${name}`);
+        App.renderPage();
+      }
+    });
+  },
+
+  showGroupList() {
+    const groups = D.getGroups();
+    if (groups.length === 0) { this.toast('暂无群聊'); return; }
+    const html = groups.map(g => `<div class="list-item" onclick="App.openChat('${g.id}',true);App.closeModal()"><img class="avatar" src="${U.avatarSvg(g.name)}"><div class="info"><div class="name">${U.esc(g.name)}</div><div class="msg">${(g.members||[]).length}人</div></div></div>`).join('');
+    this.modal('群聊列表', html, () => {}, '', '关闭');
+  },
+
+  showCreateGroup() {
+    const friends = D.getFriends();
+    if (friends.length < 1) { this.toast('至少需要1个好友'); return; }
+    const checksHtml = friends.map(f => `<label style="display:flex;align-items:center;gap:6px;padding:4px 0"><input type="checkbox" class="grpMember" value="${f.id}"> ${U.esc(f.name)}</label>`).join('');
+    const html = `<div class="form-group"><label>群名称</label><input id="grpName" placeholder="群聊名称"></div><div class="form-group"><label>选择成员</label>${checksHtml}</div>`;
+    this.modal('创建群聊', html, () => {
+      const name = document.getElementById('grpName')?.value?.trim() || '新群聊';
+      const members = [...document.querySelectorAll('.grpMember:checked')].map(el => el.value);
+      if (members.length === 0) { App.toast('请选择成员'); return; }
+      const group = { id: U.uid(), name, members };
+      D.addGroup(group);
+      App.toast(`已创建群聊: ${name}`);
+      App.renderPage();
+    });
+  },
+
+  // ===== AI MOMENTS GENERATION =====
+  async genMoments() {
+    this.toast('AI生成朋友圈...');
+    try {
+      const newMoments = await AI.genMoments(5);
+      const moments = D.get('moments') || [];
+      const friends = D.getFriends();
+      
+      for (const m of newMoments) {
+        const friend = D.getFriendByName(m.authorName);
+        moments.push({
+          id: U.uid(),
+          authorId: friend ? friend.id : '',
+          authorName: m.authorName || '匿名',
+          isPlayer: m.authorName === D.get('playerName'),
+          text: m.text || '',
+          images: m.images || [],
+          location: m.location || '',
+          likes: m.likes || [],
+          comments: (m.comments || []).map(c => ({ name: c.name, text: c.text })),
+          ts: U.ts() - Math.random() * 3600000 // Random time within last hour
+        });
+      }
+      
+      D.set('moments', moments);
+      this.toast(`生成了 ${newMoments.length} 条朋友圈`);
+      this.renderPage();
+    } catch(e) { this.toast('生成失败: ' + e.message); }
+  },
+
+  async genDailyMoments() {
+    this.toast('生成今日朋友圈...');
+    try {
+      const newMoments = await AI.genDailyMoments();
+      const moments = D.get('moments') || [];
+      
+      for (const m of newMoments) {
+        const friend = D.getFriendByName(m.authorName);
+        moments.push({
+          id: U.uid(),
+          authorId: friend ? friend.id : (m.isPlayer ? 'player' : ''),
+          authorName: m.authorName || '匿名',
+          isPlayer: m.isPlayer || m.authorName === D.get('playerName'),
+          text: m.text || '',
+          images: m.images || [],
+          location: m.location || '',
+          likes: m.likes || [],
+          comments: (m.comments || []).map(c => ({ name: c.name, text: c.text })),
+          ts: U.ts() - Math.random() * 86400000
+        });
+      }
+      
+      // Sort by time
+      moments.sort((a, b) => a.ts - b.ts);
+      D.set('moments', moments);
+      this.toast(`生成了 ${newMoments.length} 条朋友圈`);
+      this.renderPage();
+    } catch(e) { this.toast('生成失败: ' + e.message); }
+  },
+
+  // ===== MAIN AI BUTTON (for status bar) =====
+  doAI() {
+    const page = this.currentPage;
+    if (page === 'chat') {
+      this.doChatReply();
+    } else if (page === 'moments') {
+      this.genMoments();
+    } else if (page === 'forum') {
+      this.refreshForum();
+    } else {
+      this.toast('当前页面无AI功能');
+    }
+  }
+};
+
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => App.init());
+
+// Auto-save on close
+window.addEventListener('beforeunload', () => D.forceSave());
+</script>
+</body>
+</html>
